@@ -875,14 +875,15 @@ def render_month_pdf(buffer, user, data, year, month):
     draw_text(c, left, top - 39 * mm, "Name:", 8, True)
     draw_text(c, left + 32 * mm, top - 39 * mm, user["last_name"] or "", 8, True)
 
-    table_x = (60 if compact_top else 76) * mm
+    table_width_mm = 70 if compact_top else 125
+    table_x = (60 if compact_top else 56) * mm
     table_y = top - 12 * mm
-    cols = [18, 15, 15, 11, 11] if compact_top else [34, 24, 24, 18, 18]
+    cols = [18, 15, 15, 11, 11] if compact_top else [34, 27, 27, 18.5, 18.5]
     headers = ["", "Datum Beginn", "Datum Ende", "Uhrzeit von", "Uhrzeit bis"]
     split_at = len(data["readiness"]) if not compact_top else (len(data["readiness"]) + 1) // 2
     readiness_columns = [column for column in (data["readiness"][:split_at], data["readiness"][split_at:]) if column]
     top_rows = max(max((len(column) for column in readiness_columns), default=0), 7)
-    table_width = sum(cols) * mm
+    table_width = table_width_mm * mm
     for col_idx, column in enumerate(readiness_columns):
         current_x = table_x + col_idx * (table_width + 3 * mm)
         for i, header in enumerate(headers):
@@ -925,7 +926,7 @@ def render_month_pdf(buffer, user, data, year, month):
         for extra in entries[1:]:
             detail_rows.append((day, extra, False, len(entries)))
     detail_rows = detail_rows[:36]
-    detail_row_h = min(5.2 * mm, max(3.4 * mm, (grid_y - 47 * mm) / max(len(detail_rows), 1)))
+    detail_row_h = min(5.2 * mm, max(3.4 * mm, (grid_y - 58 * mm) / max(len(detail_rows), 1)))
     y = grid_y - detail_row_h
     red = colors.Color(0.82, 0.42, 0.42, alpha=0.65)
     for day, entry, first_row, entry_count in detail_rows:
