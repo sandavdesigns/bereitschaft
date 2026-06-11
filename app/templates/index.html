@@ -11,25 +11,9 @@
     <button>Anzeigen</button>
   </form>
   <div class="toolbar-actions">
-    <a class="button primary" href="{{ url_for('print_month', year=year, month=month) }}" data-preview-url="{{ url_for('print_month', year=year, month=month, embed=1) }}" data-preview-title="Druckansicht">Druckansicht</a>
-    <a class="button" href="{{ url_for('print_month', year=year, month=month) }}" data-preview-url="{{ url_for('print_month', year=year, month=month, embed=1) }}" data-preview-title="PDF-Vorschau">PDF-Vorschau</a>
-    <a class="button" href="{{ url_for('pdf', year=year, month=month) }}">PDF herunterladen</a>
+    <a class="button primary" href="{{ url_for('pdf', year=year, month=month) }}">PDF herunterladen</a>
   </div>
 </section>
-
-<div class="preview-modal" id="preview-modal" aria-hidden="true">
-  <div class="preview-dialog" role="dialog" aria-modal="true" aria-labelledby="preview-title">
-    <div class="preview-header">
-      <strong id="preview-title">Vorschau</strong>
-      <div class="preview-actions">
-        <button type="button" id="preview-print">Drucken</button>
-        <a class="button" href="{{ url_for('pdf', year=year, month=month) }}">PDF herunterladen</a>
-        <button type="button" class="danger" id="preview-close">Schließen</button>
-      </div>
-    </div>
-    <iframe id="preview-frame" title="Vorschau"></iframe>
-  </div>
-</div>
 
 <section class="forms">
   <div class="panel">

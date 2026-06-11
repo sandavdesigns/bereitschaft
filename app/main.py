@@ -868,15 +868,20 @@ def render_month_pdf(buffer, user, data, year, month):
     draw_text(c, width - 62 * mm, top, "Monat:", 8, True)
     draw_text(c, width - 28 * mm, top, f"{MONTHS[month-1][:3]} {str(year)[2:]}", 8, True)
 
-    draw_text(c, left, top - 18 * mm, "Pers.-Nr.:", 8, True)
-    draw_text(c, left + 32 * mm, top - 18 * mm, user["personnel_no"] or "", 8, True)
-    draw_text(c, left, top - 32 * mm, "Vorname:", 8, True)
-    draw_text(c, left + 32 * mm, top - 32 * mm, user["first_name"] or "", 8, True)
-    draw_text(c, left, top - 39 * mm, "Name:", 8, True)
-    draw_text(c, left + 32 * mm, top - 39 * mm, user["last_name"] or "", 8, True)
+    person_rows = [
+        ("Pers.-Nr.:", user["personnel_no"] or ""),
+        ("Vorname:", user["first_name"] or ""),
+        ("Name:", user["last_name"] or ""),
+    ]
+    for row_idx, (label, value) in enumerate(person_rows):
+        y = top - (18 + row_idx * 11) * mm
+        draw_text(c, left, y, label, 8, True)
+        draw_text(c, left + 32 * mm, y, value, 8, True)
 
+    col_widths = [9, 11, 13, 12, 12, 13, 36, 20, 18, 19, 16]
+    main_table_right = left + sum(col_widths) * mm
     table_width_mm = 70 if compact_top else 125
-    table_x = (60 if compact_top else 56) * mm
+    table_x = main_table_right - (table_width_mm * (2 if compact_top else 1) + (3 if compact_top else 0)) * mm
     table_y = top - 12 * mm
     cols = [18, 15, 15, 11, 11] if compact_top else [34, 27, 27, 18.5, 18.5]
     headers = ["", "Datum Beginn", "Datum Ende", "Uhrzeit von", "Uhrzeit bis"]
@@ -908,7 +913,6 @@ def render_month_pdf(buffer, user, data, year, month):
                 draw_fitted_text(c, x + 0.7 * mm, y + (1.25 if compact_top else 1.7) * mm, val, cols[i] * mm - 1.4 * mm, 5.0 if compact_top else 5.8)
 
     grid_x = left
-    col_widths = [9, 11, 13, 12, 12, 13, 36, 20, 18, 19, 16]
     headers = ["Tag", "", "Soll-Ruf-\nbereit-\nschaft", "von", "bis", "Std.", "Bemerkung", "Bezahlen\nx", "Freizeit\nx", "Ist-Rufbereit-\nschaft", "Erschwernis-\nzuschlag\nStd."]
     x = grid_x
     header_h = 12 * mm

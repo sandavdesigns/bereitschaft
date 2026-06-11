@@ -35,6 +35,5 @@ Portainer muss dadurch kein Image bauen.
 
 ## Drucken
 
-Für das unterschriftsfähige Formular ist die Schaltfläche **Druckansicht** vorgesehen.
-Im Browser anschließend `Drucken` wählen und Kopf-/Fußzeilen deaktivieren.
-So bleibt die Ausgabe auf einer A4-Seite und entspricht dem alten Formular deutlich besser als der serverseitige PDF-Export.
+Für das unterschriftsfähige Formular ist die Schaltfläche **PDF herunterladen** vorgesehen.
+Die PDF-Ausgabe ist auf eine A4-Seite ausgelegt und kann direkt gedruckt werden.
