@@ -177,6 +177,9 @@ def create_app():
         if not work_fits_readiness(user["id"], work_date, start_time, end_time):
             flash("Einsatzzeiten müssen innerhalb der Bereitschaftszeit liegen.", "error")
             return month_redirect(work_date.year, work_date.month)
+        compensation = request.form.get("compensation", "Freizeit")
+        if is_holiday(work_date):
+            compensation = "Bezahlen"
         execute(
             """
             INSERT INTO work_entries (user_id, readiness_type_id, work_date, start_time, end_time, note, compensation)
@@ -189,7 +192,7 @@ def create_app():
                 start_time,
                 end_time,
                 request.form.get("note", "").strip(),
-                request.form.get("compensation", "Freizeit"),
+                compensation,
             ),
         )
         flash("Einsatz gespeichert.", "success")

@@ -43,5 +43,31 @@
     document.addEventListener('submit', function (event) {
       event.target.querySelectorAll('[data-time-field]').forEach(normalizeTimeField);
     });
+
+    document.querySelectorAll('form[data-holiday-days]').forEach(function (form) {
+      var dayField = form.querySelector('[data-work-day]');
+      var compensation = form.querySelector('[data-compensation]');
+      var hint = form.querySelector('[data-holiday-compensation-hint]');
+      if (!dayField || !compensation) return;
+
+      var holidayDays = (form.getAttribute('data-holiday-days') || '')
+        .split(',')
+        .filter(Boolean)
+        .map(Number);
+      var leisureOption = Array.from(compensation.options).find(function (option) {
+        return option.value === 'Freizeit';
+      });
+
+      function updateCompensation() {
+        var isHoliday = holidayDays.indexOf(Number(dayField.value)) !== -1;
+        if (isHoliday) compensation.value = 'Bezahlen';
+        if (leisureOption) leisureOption.disabled = isHoliday;
+        if (hint) hint.hidden = !isHoliday;
+      }
+
+      dayField.addEventListener('input', updateCompensation);
+      dayField.addEventListener('change', updateCompensation);
+      updateCompensation();
+    });
   });
 }());
