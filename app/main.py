@@ -975,9 +975,10 @@ def render_month_pdf(buffer, user, data, year, month):
         draw_fitted_text(c, person_value_x, y, value, person_value_width, 8, True)
 
     headers = ["", "Datum Beginn", "Datum Ende", "Uhrzeit von", "Uhrzeit bis"]
-    split_at = len(data["readiness"]) if not compact_top else (len(data["readiness"]) + 1) // 2
+    top_rows = 8 if compact_top else 7
+    split_at = len(data["readiness"]) if not compact_top else top_rows
     readiness_columns = [column for column in (data["readiness"][:split_at], data["readiness"][split_at:]) if column]
-    top_rows = max(max((len(column) for column in readiness_columns), default=0), 7)
+    top_rows = max(max((len(column) for column in readiness_columns), default=0), top_rows)
     table_width = table_width_mm * mm
     for col_idx, column in enumerate(readiness_columns):
         current_x = table_x + col_idx * (table_width + 3 * mm)
