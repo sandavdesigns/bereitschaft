@@ -1,0 +1,17 @@
+services:
+  bereitschaft:
+    build: .
+    image: sandavdesigns/bereitschaft:latest
+    container_name: bereitschaft
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SECRET_KEY: "${SECRET_KEY:-change-me}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-admin123}"
+      DATABASE_PATH: "/data/bereitschaft.sqlite"
+    volumes:
+      - bereitschaft_data:/data
+
+volumes:
+  bereitschaft_data:

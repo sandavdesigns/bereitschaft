@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel narrow">
+  <h1>Stammdaten</h1>
+  <form method="post" class="form grid-form">
+    <label>Personalnummer <input name="personnel_no" value="{{ user.personnel_no or '' }}"></label>
+    <label>Vorname <input name="first_name" value="{{ user.first_name or '' }}"></label>
+    <label>Name <input name="last_name" value="{{ user.last_name or '' }}"></label>
+    <button class="primary">Speichern</button>
+  </form>
+</section>
+{% endblock %}

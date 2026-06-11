@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>Benutzer</h1>
+  <form method="post" class="form user-form">
+    <input name="username" placeholder="Benutzername" required>
+    <input name="password" placeholder="Passwort" required>
+    <input name="personnel_no" placeholder="Personalnummer">
+    <input name="first_name" placeholder="Vorname">
+    <input name="last_name" placeholder="Name">
+    <button class="primary">Anlegen</button>
+  </form>
+  <table>
+    <thead><tr><th>Benutzer</th><th>Rolle</th><th>Personalnummer</th><th>Name</th></tr></thead>
+    <tbody>
+      {% for item in users %}
+        <tr><td>{{ item.username }}</td><td>{{ item.role }}</td><td>{{ item.personnel_no }}</td><td>{{ item.first_name }} {{ item.last_name }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

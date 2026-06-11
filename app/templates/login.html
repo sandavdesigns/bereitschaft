@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="login-panel">
+  <h1>Bereitschaft</h1>
+  <form method="post" class="form stack">
+    <label>Benutzername <input name="username" autocomplete="username" required></label>
+    <label>Passwort <input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="primary">Anmelden</button>
+  </form>
+</section>
+{% endblock %}
