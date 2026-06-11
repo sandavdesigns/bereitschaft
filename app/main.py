@@ -519,23 +519,21 @@ def month_data(user_id, year, month):
 
     readiness_display = []
     for item in readiness:
-        first_rule = None
         item_start = max(parse_date(item["start_date"]), first)
         item_end = min(parse_date(item["end_date"]), last)
         for current in daterange(item_start, item_end):
-            first_rule = rule_for_day(item, current)
-            if first_rule:
-                break
-        readiness_display.append(
-            {
-                "id": item["id"],
-                "kind": item["type_name"] or item["kind"],
-                "start_date": item["start_date"],
-                "end_date": item["end_date"],
-                "start_time": first_rule["start_time"] if first_rule else "",
-                "end_time": first_rule["end_time"] if first_rule else "",
-            }
-        )
+            rule = rule_for_day(item, current)
+            if rule:
+                readiness_display.append(
+                    {
+                        "id": item["id"],
+                        "kind": item["type_name"] or item["kind"],
+                        "start_date": current.isoformat(),
+                        "end_date": current.isoformat(),
+                        "start_time": rule["start_time"],
+                        "end_time": rule["end_time"],
+                    }
+                )
 
     days = []
     for day in range(1, last.day + 1):
