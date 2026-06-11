@@ -105,6 +105,27 @@ def create_app():
             return redirect(url_for("profile"))
         return render_template("profile.html", user=current_user())
 
+    @app.post("/profile/password")
+    @login_required
+    def change_password():
+        user = current_user()
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        if not check_password_hash(user["password_hash"], current_password):
+            flash("Aktuelles Passwort ist falsch.", "error")
+        elif len(new_password) < 8:
+            flash("Das neue Passwort muss mindestens 8 Zeichen lang sein.", "error")
+        elif new_password != confirm_password:
+            flash("Die neuen Passwörter stimmen nicht überein.", "error")
+        else:
+            execute(
+                "UPDATE users SET password_hash = ? WHERE id = ?",
+                (generate_password_hash(new_password), user["id"]),
+            )
+            flash("Passwort geändert.", "success")
+        return redirect(url_for("profile"))
+
     @app.route("/readiness", methods=["POST"])
     @login_required
     def add_readiness():

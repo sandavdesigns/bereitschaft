@@ -29,6 +29,7 @@ body {
 .brand { font-weight: 700; color: var(--primary); text-decoration: none; }
 nav { display: flex; gap: 14px; align-items: center; }
 nav a { color: var(--ink); text-decoration: none; }
+.session-user { color: var(--muted); font-size: 13px; white-space: nowrap; }
 button, .button {
   border: 1px solid var(--line);
   background: #fff;

@@ -9,4 +9,14 @@
     <button class="primary">Speichern</button>
   </form>
 </section>
+
+<section class="panel narrow">
+  <h2>Passwort ändern</h2>
+  <form method="post" action="{{ url_for('change_password') }}" class="form stack">
+    <label>Aktuelles Passwort <input type="password" name="current_password" autocomplete="current-password" required></label>
+    <label>Neues Passwort <input type="password" name="new_password" autocomplete="new-password" minlength="8" required></label>
+    <label>Neues Passwort wiederholen <input type="password" name="confirm_password" autocomplete="new-password" minlength="8" required></label>
+    <button class="primary">Passwort ändern</button>
+  </form>
+</section>
 {% endblock %}
