@@ -126,7 +126,7 @@
       <tbody>
         {% for item in data.work_entries %}
           <tr>
-            <td>{{ item.work_date }}</td><td>{{ item.start_time }}-{{ item.end_time }}</td><td>{{ item.note }}</td>
+            <td>{{ item.work_date }}</td><td>{{ item.start_time }}-{{ item.end_time }}</td><td>{{ item.remark }}</td>
             <td>
               <form method="post" action="{{ url_for('delete_work', item_id=item.id) }}">
                 <input type="hidden" name="year" value="{{ year }}">

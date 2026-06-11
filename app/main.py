@@ -560,6 +560,10 @@ def work_remark(day_readiness, note):
     return prefix or note
 
 
+def readiness_kind(item):
+    return item["type_name"] or item["kind"]
+
+
 def month_redirect_from_form(date_field="start_date"):
     d = parse_date(request.form[date_field])
     return redirect(url_for("index", year=d.year, month=d.month))
@@ -622,17 +626,20 @@ def month_data(user_id, year, month):
                 )
 
     days = []
+    month_work_entries = []
     for day in range(1, last.day + 1):
         current = date(year, month, day)
         day_readiness = []
+        remark_readiness = []
         for r in readiness:
             if parse_date(r["start_date"]) <= current <= parse_date(r["end_date"]):
+                remark_readiness.append({"kind": readiness_kind(r)})
                 rule = rule_for_day(r, current, holiday_dates)
                 if rule:
                     day_readiness.append(
                         {
                             "id": r["id"],
-                            "kind": r["type_name"] or r["kind"],
+                            "kind": readiness_kind(r),
                             "start_time": rule["start_time"],
                             "end_time": rule["end_time"],
                             "hours_per_day": rule["hours"],
@@ -648,11 +655,12 @@ def month_data(user_id, year, month):
                         "start_time": w["start_time"],
                         "end_time": w["end_time"],
                         "note": w["note"],
-                        "remark": work_remark(day_readiness, w["note"]),
+                        "remark": work_remark(remark_readiness, w["note"]),
                         "compensation": w["compensation"],
                         "hours": decimal_hours(w["start_time"], w["end_time"]),
                     }
                 )
+                month_work_entries.append(entries[-1])
         soll = sum(float(r["hours_per_day"]) for r in day_readiness)
         more = sum(w["hours"] for w in entries)
         days.append(
@@ -670,7 +678,7 @@ def month_data(user_id, year, month):
 
     return {
         "readiness": readiness_display,
-        "work_entries": work_entries,
+        "work_entries": month_work_entries,
         "days": days,
         "sum_soll": round(sum(d["soll"] for d in days), 2),
         "sum_work": round(sum(d["mehrarbeit"] for d in days), 2),
