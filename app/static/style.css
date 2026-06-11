@@ -70,6 +70,8 @@ h2 { font-size: 18px; }
 .forms { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .form { display: grid; gap: 12px; }
 .grid-form { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
+.work-form { align-items: start; }
+.work-form button { align-self: end; }
 .user-form { grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: end; }
 .type-form { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); align-items: end; }
 .holiday-form { grid-template-columns: 180px minmax(220px, 1fr) 120px; align-items: end; }

@@ -42,7 +42,7 @@
   <div class="panel">
     <h2>Einsatz / Mehrarbeit</h2>
     {% if data.has_readiness %}
-      <form method="post" action="{{ url_for('add_work') }}" class="form grid-form" data-holiday-days="{% for day in data.days if day.holiday %}{{ day.date.day }}{% if not loop.last %},{% endif %}{% endfor %}">
+      <form method="post" action="{{ url_for('add_work') }}" class="form grid-form work-form" data-holiday-days="{% for day in data.days if day.holiday %}{{ day.date.day }}{% if not loop.last %},{% endif %}{% endfor %}">
         <input type="hidden" name="year" value="{{ year }}">
         <input type="hidden" name="month" value="{{ month }}">
         <label>Tag <input type="number" name="work_day" min="1" max="{{ data.days|length }}" data-work-day required></label>
