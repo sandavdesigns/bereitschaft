@@ -147,13 +147,16 @@ def create_app():
         readiness_type_id = int(request.form["readiness_type_id"])
         session["last_readiness_type_id"] = readiness_type_id
         work_date = date_from_month_form("work_day")
-        if not user_has_readiness_on_day(user["id"], work_date):
-            flash("Einsatz kann nur an Tagen mit Bereitschaft eingetragen werden.", "error")
-            return month_redirect(work_date.year, work_date.month)
         start_time = normalize_time_input(request.form["start_time"])
         end_time = normalize_time_input(request.form["end_time"])
         if not valid_time_value(start_time) or not valid_time_value(end_time):
             flash("Bitte Zeiten im Format HH:MM eingeben.", "error")
+            return month_redirect(work_date.year, work_date.month)
+        if not user_has_readiness_on_day(user["id"], work_date):
+            flash("Einsatz kann nur an Tagen mit Bereitschaft eingetragen werden.", "error")
+            return month_redirect(work_date.year, work_date.month)
+        if not work_fits_readiness(user["id"], work_date, start_time, end_time):
+            flash("Einsatzzeiten müssen innerhalb der Bereitschaftszeit liegen.", "error")
             return month_redirect(work_date.year, work_date.month)
         execute(
             """
@@ -660,15 +663,55 @@ def date_from_month_form(day_field):
 
 
 def user_has_readiness_on_day(user_id, day):
-    row = query_one(
+    return len(readiness_rules_for_day(user_id, day)) > 0
+
+
+def readiness_rules_for_day(user_id, day):
+    holiday_dates = holiday_dates_for_year(day.year)
+    rows = query_all(
         """
-        SELECT id FROM readiness
-        WHERE user_id = ? AND start_date <= ? AND end_date >= ?
-        LIMIT 1
+        SELECT r.*, t.name AS type_name, t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
+               t.weekend_start, t.weekend_end, t.holiday_start, t.holiday_end
+        FROM readiness r
+        LEFT JOIN readiness_types t ON t.id = r.readiness_type_id
+        WHERE r.user_id = ? AND r.start_date <= ? AND r.end_date >= ?
+        ORDER BY r.start_date, r.id
         """,
         (user_id, day.isoformat(), day.isoformat()),
     )
-    return row is not None
+    rules = []
+    for row in rows:
+        rule = rule_for_day(row, day, holiday_dates)
+        if rule:
+            rules.append(rule)
+    return rules
+
+
+def minutes_from_time(value):
+    parsed = datetime.strptime(value, "%H:%M").time()
+    return parsed.hour * 60 + parsed.minute
+
+
+def normalized_interval(start_value, end_value):
+    start = minutes_from_time(start_value)
+    end = minutes_from_time(end_value)
+    if end <= start:
+        end += 24 * 60
+    return start, end
+
+
+def work_fits_readiness(user_id, day, start_time, end_time):
+    work_start, work_end = normalized_interval(start_time, end_time)
+    for rule in readiness_rules_for_day(user_id, day):
+        ready_start, ready_end = normalized_interval(rule["start_time"], rule["end_time"])
+        current_work_start = work_start
+        current_work_end = work_end
+        if ready_end > 24 * 60 and current_work_start < ready_start:
+            current_work_start += 24 * 60
+            current_work_end += 24 * 60
+        if current_work_start >= ready_start and current_work_end <= ready_end:
+            return True
+    return False
 
 
 def month_data(user_id, year, month):
