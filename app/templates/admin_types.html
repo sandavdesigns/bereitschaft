@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>Bereitschaftsarten</h1>
+  <form method="post" class="form type-form">
+    <input name="name" placeholder="Name, z. B. Bereitschaft Gabi/EDV" required>
+    <label>Mo-Do von <input type="time" name="weekday_start"></label>
+    <label>Mo-Do bis <input type="time" name="weekday_end"></label>
+    <label>Fr von <input type="time" name="friday_start"></label>
+    <label>Fr bis <input type="time" name="friday_end"></label>
+    <label>Sa/So von <input type="time" name="weekend_start"></label>
+    <label>Sa/So bis <input type="time" name="weekend_end"></label>
+    <label>Feiertag von <input type="time" name="holiday_start"></label>
+    <label>Feiertag bis <input type="time" name="holiday_end"></label>
+    <button class="primary">Anlegen</button>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Vorhandene Arten</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Mo-Do</th>
+        <th>Fr</th>
+        <th>Sa/So</th>
+        <th>Feiertag</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for type in types %}
+        <tr>
+          <td>
+            <form id="type-{{ type.id }}" method="post" class="inline-type-form">
+              <input type="hidden" name="type_id" value="{{ type.id }}">
+              <input name="name" value="{{ type.name }}" required>
+            </form>
+          </td>
+          <td>
+            <input form="type-{{ type.id }}" type="time" name="weekday_start" value="{{ type.weekday_start }}">
+            <input form="type-{{ type.id }}" type="time" name="weekday_end" value="{{ type.weekday_end }}">
+          </td>
+          <td>
+            <input form="type-{{ type.id }}" type="time" name="friday_start" value="{{ type.friday_start }}">
+            <input form="type-{{ type.id }}" type="time" name="friday_end" value="{{ type.friday_end }}">
+          </td>
+          <td>
+            <input form="type-{{ type.id }}" type="time" name="weekend_start" value="{{ type.weekend_start }}">
+            <input form="type-{{ type.id }}" type="time" name="weekend_end" value="{{ type.weekend_end }}">
+          </td>
+          <td>
+            <input form="type-{{ type.id }}" type="time" name="holiday_start" value="{{ type.holiday_start }}">
+            <input form="type-{{ type.id }}" type="time" name="holiday_end" value="{{ type.holiday_end }}">
+          </td>
+          <td>{{ "aktiv" if type.active else "inaktiv" }}</td>
+          <td class="actions">
+            <button form="type-{{ type.id }}" class="primary">Speichern</button>
+            <form method="post" action="{{ url_for('toggle_type', type_id=type.id) }}">
+              <button>{{ "Deaktivieren" if type.active else "Aktivieren" }}</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

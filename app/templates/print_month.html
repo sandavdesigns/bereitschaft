@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <title>Rufbereitschaft {{ months[month-1] }} {{ year }}</title>
+    <style>
+      @page { size: A4 portrait; margin: 10mm; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #eee;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #000;
+        font-size: 10px;
+      }
+      .actions {
+        max-width: 210mm;
+        margin: 12px auto;
+        display: flex;
+        gap: 8px;
+      }
+      .actions a, .actions button {
+        border: 1px solid #999;
+        background: #fff;
+        border-radius: 4px;
+        padding: 8px 10px;
+        color: #111;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .page {
+        width: 190mm;
+        min-height: 277mm;
+        margin: 0 auto 20px;
+        padding: 9mm 8mm 7mm;
+        background: #fff;
+        position: relative;
+      }
+      .head {
+        display: grid;
+        grid-template-columns: 58mm 1fr 32mm;
+        column-gap: 10mm;
+        align-items: start;
+      }
+      h1 {
+        margin: 0 0 13mm;
+        font-size: 13px;
+        text-decoration: underline;
+      }
+      .person table, .top-table, .main-table, .summary table { border-collapse: collapse; width: 100%; }
+      .person td { padding: 2.4mm 1mm; font-weight: bold; }
+      .person td:first-child { width: 26mm; }
+      .month { display: grid; grid-template-columns: 15mm 1fr; gap: 7mm; font-weight: bold; margin-top: 1mm; }
+      .top-table { margin-top: 17mm; font-size: 9px; }
+      .top-table th, .top-table td {
+        border: 1px solid #000;
+        height: 5.3mm;
+        padding: 0.8mm 1mm;
+        white-space: nowrap;
+      }
+      .top-table th { text-align: center; font-weight: bold; }
+      .main-table {
+        margin-top: 2mm;
+        table-layout: fixed;
+        font-size: 9px;
+      }
+      .main-table th, .main-table td {
+        border: 1px solid #000;
+        padding: 0.5mm 0.8mm;
+        height: 4.8mm;
+        text-align: center;
+        vertical-align: middle;
+      }
+      .main-table th {
+        height: 13mm;
+        font-size: 8px;
+        font-weight: bold;
+      }
+      .main-table .note { text-align: center; }
+      .weekend td { background: #d99393; }
+      .w-wd { width: 8mm; }
+      .w-day { width: 10mm; }
+      .w-soll { width: 13mm; }
+      .w-time { width: 12mm; }
+      .w-std { width: 13mm; }
+      .w-note { width: 35mm; }
+      .w-check { width: 19mm; }
+      .w-ist { width: 19mm; }
+      .w-extra { width: 17mm; }
+      .signatures {
+        display: grid;
+        grid-template-columns: 25mm 37mm 54mm 1fr;
+        gap: 8mm;
+        margin-top: 8mm;
+        border-top: 1px dotted #999;
+        padding-top: 2mm;
+        text-align: left;
+      }
+      .signatures div { text-align: center; }
+      .signatures div:first-child { text-align: left; }
+      .deadline {
+        color: #f00;
+        font-weight: bold;
+        margin-top: 5mm;
+        font-size: 10px;
+      }
+      .summary {
+        width: 105mm;
+        margin: 4mm auto 0;
+        font-size: 10px;
+      }
+      .summary td { padding: 0.8mm 1.5mm; }
+      .summary .value { text-align: right; width: 28mm; }
+      @media print {
+        body { background: #fff; }
+        .actions { display: none; }
+        .page { margin: 0; padding: 0; width: auto; min-height: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="actions">
+      <button onclick="window.print()">Drucken / PDF speichern</button>
+      <a href="{{ url_for('index', year=year, month=month) }}">Zurück</a>
+    </div>
+    <section class="page">
+      <div class="head">
+        <div>
+          <h1>Rufbereitschaft</h1>
+          <div class="person">
+            <table>
+              <tr><td>Pers.-Nr.:</td><td>{{ user.personnel_no }}</td></tr>
+              <tr><td>Vorname:</td><td>{{ user.first_name }}</td></tr>
+              <tr><td>Name:</td><td>{{ user.last_name }}</td></tr>
+            </table>
+          </div>
+        </div>
+        <div>
+          <table class="top-table">
+            <thead>
+              <tr><th></th><th>Datum Beginn</th><th>Datum Ende</th><th>Uhrzeit von</th><th>Uhrzeit bis</th></tr>
+            </thead>
+            <tbody>
+              {% for i in range(7) %}
+                {% set item = data.readiness[i] if i < data.readiness|length else none %}
+                <tr>
+                  <td>{{ item.kind if item else '' }}</td>
+                  <td>{{ item.start_date[8:10] ~ '.' ~ item.start_date[5:7] ~ '.' ~ item.start_date[0:4] if item else '' }}</td>
+                  <td>{{ item.end_date[8:10] ~ '.' ~ item.end_date[5:7] ~ '.' ~ item.end_date[0:4] if item else '' }}</td>
+                  <td>{{ item.start_time if item else '' }}</td>
+                  <td>{{ item.end_time if item else '' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="month"><span>Monat:</span><span>{{ months[month-1][:3] }} {{ (year|string)[2:] }}</span></div>
+      </div>
+
+      <table class="main-table">
+        <thead>
+          <tr>
+            <th class="w-wd">Tag</th>
+            <th class="w-day"></th>
+            <th class="w-soll">Soll-Ruf-<br>bereit-<br>schaft</th>
+            <th class="w-time">von</th>
+            <th class="w-time">bis</th>
+            <th class="w-std">Std.</th>
+            <th class="w-note">Bemerkung</th>
+            <th class="w-check">Bezahlen<br>x</th>
+            <th class="w-check">Freizeit<br>x</th>
+            <th class="w-ist">Ist-Rufbereit-<br>schaft</th>
+            <th class="w-extra">Erschwernis-<br>zuschlag<br>Std.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in data.days %}
+            {% set entries = day.entries %}
+            {% set row_count = entries|length if entries|length > 0 else 1 %}
+            {% for n in range(row_count) %}
+              {% set entry = entries[n] if n < entries|length else none %}
+              <tr class="{% if day.date.weekday() >= 5 or day.holiday %}weekend{% endif %}">
+                <td>{{ day.weekday if n == 0 else '' }}</td>
+                <td>{{ day.date.day ~ '.' if n == 0 else '' }}</td>
+                <td>{{ ('%.2f'|format(day.soll)).replace('.', ',') if n == 0 and day.soll else '' }}</td>
+                <td>{{ entry.start_time if entry else '' }}</td>
+                <td>{{ entry.end_time if entry else '' }}</td>
+                <td>{{ ('%.2f'|format(entry.hours)).replace('.', ',') if entry else '0,00' }}</td>
+                <td class="note">{{ entry.note if entry else '' }}</td>
+                <td>{{ 'x' if entry and entry.compensation == 'Bezahlen' else '' }}</td>
+                <td>{{ 'x' if entry and entry.compensation == 'Freizeit' else '' }}</td>
+                <td>{{ ('%.2f'|format(day.ist)).replace('.', ',') if n == row_count - 1 else '' }}</td>
+                <td>{{ '0,00' if n == 0 else '' }}</td>
+              </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="signatures">
+        <div>Datum</div>
+        <div>Mitarbeiter</div>
+        <div>verantwortlicher<br>Leiter</div>
+        <div>Betriebsrat</div>
+      </div>
+
+      <div class="deadline">Bitte bis zum 4.Tag des Folgemonats abgeben!</div>
+
+      <div class="summary">
+        <table>
+          <tr><td>LA : 3121</td><td>Mo&nbsp;&nbsp;-&nbsp;&nbsp;Fr</td><td>:</td><td class="value">{{ ('%.2f'|format(data.sum_weekday)).replace('.', ',') }}</td></tr>
+          <tr><td>LA : 3122</td><td>Sa - So (Feiertag)</td><td>:</td><td class="value">{{ ('%.2f'|format(data.sum_weekend)).replace('.', ',') }}</td></tr>
+          <tr><td></td><td>Mehrarbeit</td><td>:</td><td class="value">{{ ('%.2f'|format(data.sum_work)).replace('.', ',') }}</td></tr>
+          <tr><td>LA : 3221</td><td>Erschwernisse</td><td>:</td><td class="value">0,00</td></tr>
+        </table>
+      </div>
+    </section>
+  </body>
+</html>

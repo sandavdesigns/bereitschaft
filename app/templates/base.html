@@ -12,7 +12,10 @@
         <a class="brand" href="{{ url_for('index') }}">Bereitschaft</a>
         <nav>
           <a href="{{ url_for('profile') }}">Stammdaten</a>
-          {% if user.role == 'admin' %}<a href="{{ url_for('admin_users') }}">Benutzer</a>{% endif %}
+          {% if user.role == 'admin' %}
+            <a href="{{ url_for('admin_types') }}">Bereitschaftsarten</a>
+            <a href="{{ url_for('admin_users') }}">Benutzer</a>
+          {% endif %}
           <form method="post" action="{{ url_for('logout') }}"><button>Abmelden</button></form>
         </nav>
       </header>

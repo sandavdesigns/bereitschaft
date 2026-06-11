@@ -67,6 +67,7 @@ h2 { font-size: 18px; }
 .form { display: grid; gap: 12px; }
 .grid-form { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
 .user-form { grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: end; }
+.type-form { grid-template-columns: repeat(10, minmax(0, 1fr)); align-items: end; }
 .stack { grid-template-columns: 1fr; }
 label { display: grid; gap: 5px; font-size: 13px; color: var(--muted); }
 input, select {
@@ -79,6 +80,7 @@ input, select {
   color: var(--ink);
 }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.toolbar-actions { display: flex; gap: 8px; }
 .month-select { display: flex; gap: 8px; align-items: center; }
 .month-select input { width: 100px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -89,13 +91,16 @@ th { color: var(--muted); font-weight: 600; }
 .kpis div { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fafafa; }
 .kpis span { display: block; color: var(--muted); font-size: 13px; }
 .kpis strong { font-size: 22px; }
+.inline-type-form { margin: 0; }
+.actions { display: flex; gap: 8px; align-items: center; }
+.actions form { margin: 0; }
 .messages { margin-bottom: 16px; }
 .message { padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
 .message.error { border-color: #f04438; }
 .message.success { border-color: #12b76a; }
 
 @media (max-width: 780px) {
-  .forms, .grid-form, .user-form, .kpis { grid-template-columns: 1fr; }
+  .forms, .grid-form, .user-form, .type-form, .kpis { grid-template-columns: 1fr; }
   .toolbar { align-items: stretch; flex-direction: column; }
   .topbar { height: auto; gap: 12px; align-items: flex-start; flex-direction: column; padding: 14px 18px; }
 }

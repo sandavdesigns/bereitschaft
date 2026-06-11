@@ -2,7 +2,7 @@ import calendar
 import os
 import sqlite3
 from contextlib import closing
-from datetime import date, datetime, time
+from datetime import date, datetime, timedelta
 from functools import wraps
 from io import BytesIO
 
@@ -56,7 +56,8 @@ def create_app():
         year = int(request.args.get("year", datetime.now().year))
         month = int(request.args.get("month", datetime.now().month))
         data = month_data(user["id"], year, month)
-        return render_template("index.html", user=user, year=year, month=month, months=MONTHS, data=data)
+        types = query_all("SELECT * FROM readiness_types WHERE active = 1 ORDER BY name")
+        return render_template("index.html", user=user, year=year, month=month, months=MONTHS, data=data, types=types)
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -99,17 +100,18 @@ def create_app():
         user = current_user()
         execute(
             """
-            INSERT INTO readiness (user_id, start_date, end_date, kind, start_time, end_time, hours_per_day)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO readiness (user_id, readiness_type_id, start_date, end_date, kind, start_time, end_time, hours_per_day)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user["id"],
+                int(request.form["readiness_type_id"]),
                 request.form["start_date"],
                 request.form["end_date"],
-                request.form.get("kind", "Bereitschaft"),
-                request.form["start_time"],
-                request.form["end_time"],
-                decimal_hours(request.form["start_time"], request.form["end_time"]),
+                readiness_type_name(int(request.form["readiness_type_id"])),
+                "00:00",
+                "00:00",
+                0,
             ),
         )
         flash("Bereitschaft gespeichert.", "success")
@@ -160,6 +162,15 @@ def create_app():
         filename = f"rufbereitschaft_{year}_{month:02d}_{user['username']}.pdf"
         return send_file(buffer, mimetype="application/pdf", as_attachment=True, download_name=filename)
 
+    @app.get("/print/<int:year>/<int:month>")
+    @login_required
+    def print_month(year, month):
+        if month < 1 or month > 12:
+            abort(404)
+        user = current_user()
+        data = month_data(user["id"], year, month)
+        return render_template("print_month.html", user=user, data=data, year=year, month=month, months=MONTHS)
+
     @app.route("/admin/users", methods=["GET", "POST"])
     @admin_required
     def admin_users():
@@ -188,6 +199,54 @@ def create_app():
                     flash("Benutzername existiert bereits.", "error")
         users = query_all("SELECT id, username, role, personnel_no, first_name, last_name FROM users ORDER BY username")
         return render_template("admin_users.html", user=current_user(), users=users)
+
+    @app.route("/admin/types", methods=["GET", "POST"])
+    @admin_required
+    def admin_types():
+        if request.method == "POST":
+            type_id = request.form.get("type_id")
+            values = (
+                request.form.get("name", "").strip(),
+                request.form.get("weekday_start", ""),
+                request.form.get("weekday_end", ""),
+                request.form.get("friday_start", ""),
+                request.form.get("friday_end", ""),
+                request.form.get("weekend_start", ""),
+                request.form.get("weekend_end", ""),
+                request.form.get("holiday_start", ""),
+                request.form.get("holiday_end", ""),
+            )
+            if not values[0]:
+                flash("Name ist Pflicht.", "error")
+            elif type_id:
+                execute(
+                    """
+                    UPDATE readiness_types
+                    SET name = ?, weekday_start = ?, weekday_end = ?, friday_start = ?, friday_end = ?,
+                        weekend_start = ?, weekend_end = ?, holiday_start = ?, holiday_end = ?
+                    WHERE id = ?
+                    """,
+                    (*values, int(type_id)),
+                )
+                flash("Bereitschaftsart gespeichert.", "success")
+            else:
+                execute(
+                    """
+                    INSERT INTO readiness_types
+                    (name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    values,
+                )
+                flash("Bereitschaftsart angelegt.", "success")
+        types = query_all("SELECT * FROM readiness_types ORDER BY name")
+        return render_template("admin_types.html", user=current_user(), types=types)
+
+    @app.post("/admin/types/<int:type_id>/toggle")
+    @admin_required
+    def toggle_type(type_id):
+        execute("UPDATE readiness_types SET active = CASE active WHEN 1 THEN 0 ELSE 1 END WHERE id = ?", (type_id,))
+        return redirect(url_for("admin_types"))
 
     return app
 
@@ -220,6 +279,7 @@ def init_db(app):
                 CREATE TABLE IF NOT EXISTS readiness (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    readiness_type_id INTEGER REFERENCES readiness_types(id),
                     start_date TEXT NOT NULL,
                     end_date TEXT NOT NULL,
                     kind TEXT NOT NULL,
@@ -237,8 +297,24 @@ def init_db(app):
                     note TEXT NOT NULL DEFAULT '',
                     compensation TEXT NOT NULL DEFAULT 'Freizeit'
                 );
+
+                CREATE TABLE IF NOT EXISTS readiness_types (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    weekday_start TEXT NOT NULL DEFAULT '',
+                    weekday_end TEXT NOT NULL DEFAULT '',
+                    friday_start TEXT NOT NULL DEFAULT '',
+                    friday_end TEXT NOT NULL DEFAULT '',
+                    weekend_start TEXT NOT NULL DEFAULT '',
+                    weekend_end TEXT NOT NULL DEFAULT '',
+                    holiday_start TEXT NOT NULL DEFAULT '',
+                    holiday_end TEXT NOT NULL DEFAULT '',
+                    active INTEGER NOT NULL DEFAULT 1
+                );
                 """
             )
+            ensure_column(db, "readiness", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
+            seed_default_type(db)
             admin = db.execute("SELECT id FROM users WHERE username = 'admin'").fetchone()
             if admin is None:
                 db.execute(
@@ -249,6 +325,27 @@ def init_db(app):
                     (generate_password_hash(os.environ.get("ADMIN_PASSWORD", "admin123")),),
                 )
             db.commit()
+
+
+def ensure_column(db, table, column, definition):
+    columns = [row[1] for row in db.execute(f"PRAGMA table_info({table})").fetchall()]
+    if column not in columns:
+        db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
+def seed_default_type(db):
+    existing = db.execute("SELECT id FROM readiness_types LIMIT 1").fetchone()
+    if existing is None:
+        db.execute(
+            """
+            INSERT INTO readiness_types
+            (name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
+            VALUES ('Bereitschaft', '12:15', '18:00', '12:15', '18:00', '06:00', '18:00', '06:00', '18:00')
+            """
+        )
+    default_type = db.execute("SELECT id FROM readiness_types ORDER BY id LIMIT 1").fetchone()
+    if default_type is not None:
+        db.execute("UPDATE readiness SET readiness_type_id = ? WHERE readiness_type_id IS NULL", (default_type[0],))
 
 
 def query_one(sql, params=()):
@@ -263,6 +360,11 @@ def execute(sql, params=()):
     db = get_db()
     db.execute(sql, params)
     db.commit()
+
+
+def readiness_type_name(type_id):
+    row = query_one("SELECT name FROM readiness_types WHERE id = ?", (type_id,))
+    return row["name"] if row else "Bereitschaft"
 
 
 def current_user():
@@ -300,9 +402,71 @@ def parse_date(value):
 
 
 def decimal_hours(start_value, end_value):
+    if not start_value or not end_value:
+        return 0
     start = datetime.strptime(start_value, "%H:%M").time()
     end = datetime.strptime(end_value, "%H:%M").time()
     return round(((end.hour * 60 + end.minute) - (start.hour * 60 + start.minute)) / 60, 2)
+
+
+def daterange(start, end):
+    current = start
+    while current <= end:
+        yield current
+        current += timedelta(days=1)
+
+
+def easter_sunday(year):
+    a = year % 19
+    b = year // 100
+    c = year % 100
+    d = b // 4
+    e = b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i = c // 4
+    k = c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month = (h + l - 7 * m + 114) // 31
+    day = ((h + l - 7 * m + 114) % 31) + 1
+    return date(year, month, day)
+
+
+def holidays_for_year(year):
+    easter = easter_sunday(year)
+    return {
+        date(year, 1, 1),
+        easter - timedelta(days=2),
+        easter + timedelta(days=1),
+        date(year, 5, 1),
+        easter + timedelta(days=39),
+        easter + timedelta(days=50),
+        easter + timedelta(days=60),
+        date(year, 10, 3),
+        date(year, 11, 1),
+        date(year, 12, 25),
+        date(year, 12, 26),
+    }
+
+
+def is_holiday(day):
+    return day in holidays_for_year(day.year)
+
+
+def rule_for_day(readiness_type, day):
+    if is_holiday(day):
+        start, end = readiness_type["holiday_start"], readiness_type["holiday_end"]
+    elif day.weekday() == 4:
+        start, end = readiness_type["friday_start"], readiness_type["friday_end"]
+    elif day.weekday() >= 5:
+        start, end = readiness_type["weekend_start"], readiness_type["weekend_end"]
+    else:
+        start, end = readiness_type["weekday_start"], readiness_type["weekday_end"]
+    if not start or not end:
+        return None
+    return {"start_time": start, "end_time": end, "hours": decimal_hours(start, end)}
 
 
 def month_redirect_from_form(date_field="start_date"):
@@ -315,9 +479,12 @@ def month_data(user_id, year, month):
     last = date(year, month, calendar.monthrange(year, month)[1])
     readiness = query_all(
         """
-        SELECT * FROM readiness
-        WHERE user_id = ? AND start_date <= ? AND end_date >= ?
-        ORDER BY start_date, start_time
+        SELECT r.*, t.name AS type_name, t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
+               t.weekend_start, t.weekend_end, t.holiday_start, t.holiday_end
+        FROM readiness r
+        LEFT JOIN readiness_types t ON t.id = r.readiness_type_id
+        WHERE r.user_id = ? AND r.start_date <= ? AND r.end_date >= ?
+        ORDER BY r.start_date, r.id
         """,
         (user_id, last.isoformat(), first.isoformat()),
     )
@@ -330,21 +497,64 @@ def month_data(user_id, year, month):
         (user_id, first.isoformat(), last.isoformat()),
     )
 
+    readiness_display = []
+    for item in readiness:
+        first_rule = None
+        item_start = max(parse_date(item["start_date"]), first)
+        item_end = min(parse_date(item["end_date"]), last)
+        for current in daterange(item_start, item_end):
+            first_rule = rule_for_day(item, current)
+            if first_rule:
+                break
+        readiness_display.append(
+            {
+                "id": item["id"],
+                "kind": item["type_name"] or item["kind"],
+                "start_date": item["start_date"],
+                "end_date": item["end_date"],
+                "start_time": first_rule["start_time"] if first_rule else "",
+                "end_time": first_rule["end_time"] if first_rule else "",
+            }
+        )
+
     days = []
     for day in range(1, last.day + 1):
         current = date(year, month, day)
-        day_readiness = [
-            r
-            for r in readiness
-            if parse_date(r["start_date"]) <= current <= parse_date(r["end_date"])
-        ]
-        entries = [w for w in work_entries if w["work_date"] == current.isoformat()]
+        day_readiness = []
+        for r in readiness:
+            if parse_date(r["start_date"]) <= current <= parse_date(r["end_date"]):
+                rule = rule_for_day(r, current)
+                if rule:
+                    day_readiness.append(
+                        {
+                            "id": r["id"],
+                            "kind": r["type_name"] or r["kind"],
+                            "start_time": rule["start_time"],
+                            "end_time": rule["end_time"],
+                            "hours_per_day": rule["hours"],
+                        }
+                    )
+        entries = []
+        for w in work_entries:
+            if w["work_date"] == current.isoformat():
+                entries.append(
+                    {
+                        "id": w["id"],
+                        "work_date": w["work_date"],
+                        "start_time": w["start_time"],
+                        "end_time": w["end_time"],
+                        "note": w["note"],
+                        "compensation": w["compensation"],
+                        "hours": decimal_hours(w["start_time"], w["end_time"]),
+                    }
+                )
         soll = sum(float(r["hours_per_day"]) for r in day_readiness)
-        more = sum(decimal_hours(w["start_time"], w["end_time"]) for w in entries)
+        more = sum(w["hours"] for w in entries)
         days.append(
             {
                 "date": current,
                 "weekday": WEEKDAYS[current.weekday()],
+                "holiday": is_holiday(current),
                 "readiness": day_readiness,
                 "entries": entries,
                 "soll": round(soll, 2),
@@ -354,13 +564,13 @@ def month_data(user_id, year, month):
         )
 
     return {
-        "readiness": readiness,
+        "readiness": readiness_display,
         "work_entries": work_entries,
         "days": days,
         "sum_soll": round(sum(d["soll"] for d in days), 2),
         "sum_work": round(sum(d["mehrarbeit"] for d in days), 2),
-        "sum_weekday": round(sum(d["ist"] for d in days if d["date"].weekday() < 5), 2),
-        "sum_weekend": round(sum(d["ist"] for d in days if d["date"].weekday() >= 5), 2),
+        "sum_weekday": round(sum(d["ist"] for d in days if d["date"].weekday() < 5 and not d["holiday"]), 2),
+        "sum_weekend": round(sum(d["ist"] for d in days if d["date"].weekday() >= 5 or d["holiday"]), 2),
     }
 
 
@@ -383,9 +593,10 @@ def fmt_hours(value):
 def render_month_pdf(buffer, user, data, year, month):
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
-    left = 18 * mm
-    top = height - 24 * mm
-    row_h = 6.0 * mm
+    left = 12 * mm
+    top = height - 22 * mm
+    top_row_h = 5.0 * mm
+    detail_row_h = 3.75 * mm
 
     draw_text(c, left, top, "Rufbereitschaft", 11, True)
     c.line(left, top - 1, left + 28 * mm, top - 1)
@@ -399,16 +610,16 @@ def render_month_pdf(buffer, user, data, year, month):
     draw_text(c, left, top - 39 * mm, "Name:", 8, True)
     draw_text(c, left + 32 * mm, top - 39 * mm, user["last_name"] or "", 8, True)
 
-    table_x = width - 112 * mm
+    table_x = 78 * mm
     table_y = top - 12 * mm
-    cols = [34, 23, 20, 19, 19]
+    cols = [36, 24, 22, 20, 20]
     headers = ["", "Datum Beginn", "Datum Ende", "Uhrzeit von", "Uhrzeit bis"]
     for i, header in enumerate(headers):
         x = table_x + sum(cols[:i]) * mm
-        c.rect(x, table_y - row_h, cols[i] * mm, row_h)
-        draw_text(c, x + cols[i] * mm / 2, table_y - 4.2 * mm, header, 6.8, True, "center")
+        c.rect(x, table_y - top_row_h, cols[i] * mm, top_row_h)
+        draw_text(c, x + cols[i] * mm / 2, table_y - 3.6 * mm, header, 6.4, True, "center")
     for row_idx in range(7):
-        y = table_y - (row_idx + 2) * row_h
+        y = table_y - (row_idx + 2) * top_row_h
         item = data["readiness"][row_idx] if row_idx < len(data["readiness"]) else None
         values = ["", "", "", "", ""]
         if item:
@@ -421,35 +632,35 @@ def render_month_pdf(buffer, user, data, year, month):
             ]
         for i, val in enumerate(values):
             x = table_x + sum(cols[:i]) * mm
-            c.rect(x, y, cols[i] * mm, row_h)
-            draw_text(c, x + 1 * mm, y + 1.8 * mm, val, 6.6)
+            c.rect(x, y, cols[i] * mm, top_row_h)
+            draw_text(c, x + 1 * mm, y + 1.5 * mm, val, 5.9)
 
     grid_x = left
-    grid_y = top - 72 * mm
-    col_widths = [10, 13, 13, 12, 12, 14, 34, 22, 18, 19, 17]
+    grid_y = top - 70 * mm
+    col_widths = [9, 11, 13, 12, 12, 13, 36, 20, 18, 19, 16]
     headers = ["Tag", "", "Soll-Ruf-\nbereit-\nschaft", "von", "bis", "Std.", "Bemerkung", "Bezahlen\nx", "Freizeit\nx", "Ist-Rufbereit-\nschaft", "Erschwernis-\nzuschlag\nStd."]
     x = grid_x
-    header_h = 17 * mm
+    header_h = 14 * mm
     for idx, header in enumerate(headers):
         c.rect(x, grid_y, col_widths[idx] * mm, header_h)
         for line_no, line in enumerate(header.split("\n")):
-            draw_text(c, x + col_widths[idx] * mm / 2, grid_y + header_h - (line_no + 1) * 4.2 * mm, line, 6.4, True, "center")
+            draw_text(c, x + col_widths[idx] * mm / 2, grid_y + header_h - (line_no + 1) * 3.6 * mm, line, 5.8, True, "center")
         x += col_widths[idx] * mm
 
-    y = grid_y - row_h
+    y = grid_y - detail_row_h
     detail_rows = []
     for day in data["days"]:
         entries = list(day["entries"])
         detail_rows.append((day, entries[0] if entries else None, True, len(entries)))
         for extra in entries[1:]:
             detail_rows.append((day, extra, False, len(entries)))
-    detail_rows = detail_rows[:38]
+    detail_rows = detail_rows[:36]
     red = colors.Color(0.82, 0.42, 0.42, alpha=0.65)
     for day, entry, first_row, entry_count in detail_rows:
-        is_weekend = day["date"].weekday() >= 5
+        is_weekend = day["date"].weekday() >= 5 or day.get("holiday")
         if is_weekend:
             c.setFillColor(red)
-            c.rect(grid_x, y, sum(col_widths) * mm, row_h, stroke=0, fill=1)
+            c.rect(grid_x, y, sum(col_widths) * mm, detail_row_h, stroke=0, fill=1)
             c.setFillColor(colors.black)
         x = grid_x
         vals = [
@@ -466,31 +677,31 @@ def render_month_pdf(buffer, user, data, year, month):
             "0,00" if first_row else "",
         ]
         for idx, val in enumerate(vals):
-            c.rect(x, y, col_widths[idx] * mm, row_h)
-            draw_text(c, x + col_widths[idx] * mm / 2, y + 1.8 * mm, val, 6.5, False, "center")
+            c.rect(x, y, col_widths[idx] * mm, detail_row_h)
+            draw_text(c, x + col_widths[idx] * mm / 2, y + 1.1 * mm, val, 5.5, False, "center")
             x += col_widths[idx] * mm
-        y -= row_h
+        y -= detail_row_h
 
-    draw_text(c, left, 47 * mm, "Datum", 8)
-    draw_text(c, left + 34 * mm, 47 * mm, "Mitarbeiter", 8)
-    draw_text(c, left + 76 * mm, 47 * mm, "verantwortlicher\nLeiter", 8)
-    draw_text(c, left + 142 * mm, 47 * mm, "Betriebsrat", 8)
+    draw_text(c, left, 38 * mm, "Datum", 7)
+    draw_text(c, left + 34 * mm, 38 * mm, "Mitarbeiter", 7)
+    draw_text(c, left + 76 * mm, 38 * mm, "verantwortlicher Leiter", 7)
+    draw_text(c, left + 142 * mm, 38 * mm, "Betriebsrat", 7)
     c.setStrokeColor(colors.grey)
-    c.line(left, 51 * mm, width - 20 * mm, 51 * mm)
+    c.line(left, 42 * mm, width - 12 * mm, 42 * mm)
     c.setStrokeColor(colors.black)
     c.setFillColor(colors.red)
-    draw_text(c, left, 35 * mm, "Bitte bis zum 4.Tag des Folgemonats abgeben!", 8, True)
+    draw_text(c, left, 30 * mm, "Bitte bis zum 4.Tag des Folgemonats abgeben!", 7, True)
     c.setFillColor(colors.black)
-    draw_text(c, left + 18 * mm, 25 * mm, "LA : 3121", 8)
-    draw_text(c, left + 50 * mm, 25 * mm, "Mo  -  Fr", 8)
-    draw_text(c, width - 76 * mm, 25 * mm, fmt_hours(data["sum_weekday"]), 8)
-    draw_text(c, left + 18 * mm, 19 * mm, "LA : 3122", 8)
-    draw_text(c, left + 50 * mm, 19 * mm, "Sa - So (Feiertag)", 8)
-    draw_text(c, width - 76 * mm, 19 * mm, fmt_hours(data["sum_weekend"]), 8)
-    draw_text(c, left + 50 * mm, 13 * mm, "Mehrarbeit", 8)
-    draw_text(c, width - 76 * mm, 13 * mm, fmt_hours(data["sum_work"]), 8)
-    draw_text(c, left + 18 * mm, 7 * mm, "LA : 3221", 8)
-    draw_text(c, left + 50 * mm, 7 * mm, "Erschwernisse", 8)
-    draw_text(c, width - 76 * mm, 7 * mm, "0,00", 8)
+    draw_text(c, left + 18 * mm, 22 * mm, "LA : 3121", 7)
+    draw_text(c, left + 50 * mm, 22 * mm, "Mo  -  Fr", 7)
+    draw_text(c, width - 76 * mm, 22 * mm, fmt_hours(data["sum_weekday"]), 7)
+    draw_text(c, left + 18 * mm, 17 * mm, "LA : 3122", 7)
+    draw_text(c, left + 50 * mm, 17 * mm, "Sa - So (Feiertag)", 7)
+    draw_text(c, width - 76 * mm, 17 * mm, fmt_hours(data["sum_weekend"]), 7)
+    draw_text(c, left + 50 * mm, 12 * mm, "Mehrarbeit", 7)
+    draw_text(c, width - 76 * mm, 12 * mm, fmt_hours(data["sum_work"]), 7)
+    draw_text(c, left + 18 * mm, 7 * mm, "LA : 3221", 7)
+    draw_text(c, left + 50 * mm, 7 * mm, "Erschwernisse", 7)
+    draw_text(c, width - 76 * mm, 7 * mm, "0,00", 7)
     c.showPage()
     c.save()

@@ -32,3 +32,9 @@ Die SQLite-Datenbank liegt im Volume `bereitschaft_data`.
 
 Die Compose-Datei zieht standardmäßig das fertige Image `ghcr.io/sandavdesigns/bereitschaft:latest`.
 Portainer muss dadurch kein Image bauen.
+
+## Drucken
+
+Für das unterschriftsfähige Formular ist die Schaltfläche **Druckansicht** vorgesehen.
+Im Browser anschließend `Drucken` wählen und Kopf-/Fußzeilen deaktivieren.
+So bleibt die Ausgabe auf einer A4-Seite und entspricht dem alten Formular deutlich besser als der serverseitige PDF-Export.
