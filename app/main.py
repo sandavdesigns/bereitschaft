@@ -135,11 +135,12 @@ def create_app():
         work_date = date_from_month_form("work_day")
         execute(
             """
-            INSERT INTO work_entries (user_id, work_date, start_time, end_time, note, compensation)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO work_entries (user_id, readiness_type_id, work_date, start_time, end_time, note, compensation)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user["id"],
+                int(request.form["readiness_type_id"]),
                 work_date.isoformat(),
                 request.form["start_time"],
                 request.form["end_time"],
@@ -339,6 +340,7 @@ def init_db(app):
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     work_date TEXT NOT NULL,
+                    readiness_type_id INTEGER REFERENCES readiness_types(id),
                     start_time TEXT NOT NULL,
                     end_time TEXT NOT NULL,
                     note TEXT NOT NULL DEFAULT '',
@@ -367,6 +369,7 @@ def init_db(app):
                 """
             )
             ensure_column(db, "readiness", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
+            ensure_column(db, "work_entries", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             seed_default_type(db)
             seed_thuringia_holidays(db, datetime.now().year - 1, replace=False)
             seed_thuringia_holidays(db, datetime.now().year, replace=False)
@@ -600,9 +603,11 @@ def month_data(user_id, year, month):
     )
     work_entries = query_all(
         """
-        SELECT * FROM work_entries
-        WHERE user_id = ? AND work_date BETWEEN ? AND ?
-        ORDER BY work_date, start_time
+        SELECT w.*, t.name AS type_name
+        FROM work_entries w
+        LEFT JOIN readiness_types t ON t.id = w.readiness_type_id
+        WHERE w.user_id = ? AND w.work_date BETWEEN ? AND ?
+        ORDER BY w.work_date, w.start_time
         """,
         (user_id, first.isoformat(), last.isoformat()),
     )
@@ -655,7 +660,7 @@ def month_data(user_id, year, month):
                         "start_time": w["start_time"],
                         "end_time": w["end_time"],
                         "note": w["note"],
-                        "remark": work_remark(remark_readiness, w["note"]),
+                        "remark": work_remark([{"kind": w["type_name"]}] if w["type_name"] else remark_readiness, w["note"]),
                         "compensation": w["compensation"],
                         "hours": decimal_hours(w["start_time"], w["end_time"]),
                     }

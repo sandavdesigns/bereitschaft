@@ -40,6 +40,13 @@
       <input type="hidden" name="year" value="{{ year }}">
       <input type="hidden" name="month" value="{{ month }}">
       <label>Tag <input type="number" name="work_day" min="1" max="{{ data.days|length }}" required></label>
+      <label>Art
+        <select name="readiness_type_id" required>
+          {% for type in types %}
+            <option value="{{ type.id }}">{{ type.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
       <label>Von <input type="time" name="start_time" required></label>
       <label>Bis <input type="time" name="end_time" required></label>
       <label>Bemerkung <input name="note"></label>
