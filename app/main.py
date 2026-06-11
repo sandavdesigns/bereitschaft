@@ -57,7 +57,17 @@ def create_app():
         month = int(request.args.get("month", datetime.now().month))
         data = month_data(user["id"], year, month)
         types = query_all("SELECT * FROM readiness_types WHERE active = 1 ORDER BY name")
-        return render_template("index.html", user=user, year=year, month=month, months=MONTHS, data=data, types=types)
+        selected_type_id = selected_readiness_type_id(types)
+        return render_template(
+            "index.html",
+            user=user,
+            year=year,
+            month=month,
+            months=MONTHS,
+            data=data,
+            types=types,
+            selected_type_id=selected_type_id,
+        )
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -98,6 +108,8 @@ def create_app():
     @login_required
     def add_readiness():
         user = current_user()
+        readiness_type_id = int(request.form["readiness_type_id"])
+        session["last_readiness_type_id"] = readiness_type_id
         start_date = date_from_month_form("start_day")
         end_date = date_from_month_form("end_day")
         if end_date < start_date:
@@ -110,10 +122,10 @@ def create_app():
             """,
             (
                 user["id"],
-                int(request.form["readiness_type_id"]),
+                readiness_type_id,
                 start_date.isoformat(),
                 end_date.isoformat(),
-                readiness_type_name(int(request.form["readiness_type_id"])),
+                readiness_type_name(readiness_type_id),
                 "00:00",
                 "00:00",
                 0,
@@ -132,7 +144,14 @@ def create_app():
     @login_required
     def add_work():
         user = current_user()
+        readiness_type_id = int(request.form["readiness_type_id"])
+        session["last_readiness_type_id"] = readiness_type_id
         work_date = date_from_month_form("work_day")
+        start_time = normalize_time_input(request.form["start_time"])
+        end_time = normalize_time_input(request.form["end_time"])
+        if not valid_time_value(start_time) or not valid_time_value(end_time):
+            flash("Bitte Zeiten im Format HH:MM eingeben.", "error")
+            return month_redirect(work_date.year, work_date.month)
         execute(
             """
             INSERT INTO work_entries (user_id, readiness_type_id, work_date, start_time, end_time, note, compensation)
@@ -140,10 +159,10 @@ def create_app():
             """,
             (
                 user["id"],
-                int(request.form["readiness_type_id"]),
+                readiness_type_id,
                 work_date.isoformat(),
-                request.form["start_time"],
-                request.form["end_time"],
+                start_time,
+                end_time,
                 request.form.get("note", "").strip(),
                 request.form.get("compensation", "Freizeit"),
             ),
@@ -214,17 +233,19 @@ def create_app():
             type_id = request.form.get("type_id")
             values = (
                 request.form.get("name", "").strip(),
-                request.form.get("weekday_start", ""),
-                request.form.get("weekday_end", ""),
-                request.form.get("friday_start", ""),
-                request.form.get("friday_end", ""),
-                request.form.get("weekend_start", ""),
-                request.form.get("weekend_end", ""),
-                request.form.get("holiday_start", ""),
-                request.form.get("holiday_end", ""),
+                normalize_time_input(request.form.get("weekday_start", "")),
+                normalize_time_input(request.form.get("weekday_end", "")),
+                normalize_time_input(request.form.get("friday_start", "")),
+                normalize_time_input(request.form.get("friday_end", "")),
+                normalize_time_input(request.form.get("weekend_start", "")),
+                normalize_time_input(request.form.get("weekend_end", "")),
+                normalize_time_input(request.form.get("holiday_start", "")),
+                normalize_time_input(request.form.get("holiday_end", "")),
             )
             if not values[0]:
                 flash("Name ist Pflicht.", "error")
+            elif not all(valid_time_value(value, allow_empty=True) for value in values[1:]):
+                flash("Bitte Zeiten im Format HH:MM eingeben.", "error")
             elif type_id:
                 execute(
                     """
@@ -464,6 +485,44 @@ def execute(sql, params=()):
 def readiness_type_name(type_id):
     row = query_one("SELECT name FROM readiness_types WHERE id = ?", (type_id,))
     return row["name"] if row else "Bereitschaft"
+
+
+def selected_readiness_type_id(types):
+    type_ids = [int(item["id"]) for item in types]
+    selected = session.get("last_readiness_type_id")
+    if selected in type_ids:
+        return selected
+    return type_ids[0] if type_ids else None
+
+
+def normalize_time_input(value):
+    value = (value or "").strip()
+    if not value:
+        return ""
+    if value.isdigit():
+        hour = int(value)
+        if 0 <= hour <= 23:
+            return f"{hour:02d}:00"
+    if ":" in value:
+        parts = value.split(":", 1)
+        if parts[0].isdigit() and (parts[1] == "" or parts[1].isdigit()):
+            hour = int(parts[0])
+            minute = int(parts[1] or "0")
+            if 0 <= hour <= 23 and 0 <= minute <= 59:
+                return f"{hour:02d}:{minute:02d}"
+    return value
+
+
+def valid_time_value(value, allow_empty=False):
+    value = (value or "").strip()
+    if not value:
+        return allow_empty
+    if len(value) != 5 or value[2] != ":":
+        return False
+    hour, minute = value.split(":", 1)
+    if not hour.isdigit() or not minute.isdigit():
+        return False
+    return 0 <= int(hour) <= 23 and 0 <= int(minute) <= 59
 
 
 def current_user():

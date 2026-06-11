@@ -42,7 +42,7 @@
       <label>Art
         <select name="readiness_type_id" required>
           {% for type in types %}
-            <option value="{{ type.id }}">{{ type.name }}</option>
+            <option value="{{ type.id }}" {% if type.id == selected_type_id %}selected{% endif %}>{{ type.name }}</option>
           {% endfor %}
         </select>
       </label>
@@ -58,12 +58,12 @@
       <label>Art
         <select name="readiness_type_id" required>
           {% for type in types %}
-            <option value="{{ type.id }}">{{ type.name }}</option>
+            <option value="{{ type.id }}" {% if type.id == selected_type_id %}selected{% endif %}>{{ type.name }}</option>
           {% endfor %}
         </select>
       </label>
-      <label>Von <input type="time" name="start_time" required></label>
-      <label>Bis <input type="time" name="end_time" required></label>
+      <label>Von <input type="text" name="start_time" inputmode="numeric" placeholder="HH:MM" data-time-field required></label>
+      <label>Bis <input type="text" name="end_time" inputmode="numeric" placeholder="HH:MM" data-time-field required></label>
       <label>Bemerkung <input name="note"></label>
       <label>Ausgleich
         <select name="compensation"><option>Freizeit</option><option>Bezahlen</option></select>

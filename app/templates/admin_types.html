@@ -4,14 +4,14 @@
   <h1>Bereitschaftsarten</h1>
   <form method="post" class="form type-form">
     <input name="name" placeholder="Name, z. B. Bereitschaft Gabi/EDV" required>
-    <label>Mo-Do von <input type="time" name="weekday_start"></label>
-    <label>Mo-Do bis <input type="time" name="weekday_end"></label>
-    <label>Fr von <input type="time" name="friday_start"></label>
-    <label>Fr bis <input type="time" name="friday_end"></label>
-    <label>Sa/So von <input type="time" name="weekend_start"></label>
-    <label>Sa/So bis <input type="time" name="weekend_end"></label>
-    <label>Feiertag von <input type="time" name="holiday_start"></label>
-    <label>Feiertag bis <input type="time" name="holiday_end"></label>
+    <label>Mo-Do von <input type="text" name="weekday_start" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
+    <label>Mo-Do bis <input type="text" name="weekday_end" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
+    <label>Fr von <input type="text" name="friday_start" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
+    <label>Fr bis <input type="text" name="friday_end" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
+    <label>Sa/So von <input type="text" name="weekend_start" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
+    <label>Sa/So bis <input type="text" name="weekend_end" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
+    <label>Feiertag von <input type="text" name="holiday_start" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
+    <label>Feiertag bis <input type="text" name="holiday_end" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
     <button class="primary">Anlegen</button>
   </form>
 </section>
@@ -40,20 +40,20 @@
             </form>
           </td>
           <td>
-            <input form="type-{{ type.id }}" type="time" name="weekday_start" value="{{ type.weekday_start }}">
-            <input form="type-{{ type.id }}" type="time" name="weekday_end" value="{{ type.weekday_end }}">
+            <input form="type-{{ type.id }}" type="text" name="weekday_start" value="{{ type.weekday_start }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
+            <input form="type-{{ type.id }}" type="text" name="weekday_end" value="{{ type.weekday_end }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
           </td>
           <td>
-            <input form="type-{{ type.id }}" type="time" name="friday_start" value="{{ type.friday_start }}">
-            <input form="type-{{ type.id }}" type="time" name="friday_end" value="{{ type.friday_end }}">
+            <input form="type-{{ type.id }}" type="text" name="friday_start" value="{{ type.friday_start }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
+            <input form="type-{{ type.id }}" type="text" name="friday_end" value="{{ type.friday_end }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
           </td>
           <td>
-            <input form="type-{{ type.id }}" type="time" name="weekend_start" value="{{ type.weekend_start }}">
-            <input form="type-{{ type.id }}" type="time" name="weekend_end" value="{{ type.weekend_end }}">
+            <input form="type-{{ type.id }}" type="text" name="weekend_start" value="{{ type.weekend_start }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
+            <input form="type-{{ type.id }}" type="text" name="weekend_end" value="{{ type.weekend_end }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
           </td>
           <td>
-            <input form="type-{{ type.id }}" type="time" name="holiday_start" value="{{ type.holiday_start }}">
-            <input form="type-{{ type.id }}" type="time" name="holiday_end" value="{{ type.holiday_end }}">
+            <input form="type-{{ type.id }}" type="text" name="holiday_start" value="{{ type.holiday_start }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
+            <input form="type-{{ type.id }}" type="text" name="holiday_end" value="{{ type.holiday_end }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
           </td>
           <td>{{ "aktiv" if type.active else "inaktiv" }}</td>
           <td class="actions">
