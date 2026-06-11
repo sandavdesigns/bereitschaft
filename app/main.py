@@ -20,6 +20,7 @@ from flask import (
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -939,6 +940,13 @@ def draw_fitted_text(c, x, y, text, max_width, size=8, bold=False, align="left")
     draw_text(c, x, y, fitted_text(c, text, max_width, size, bold), size, bold, align)
 
 
+def centered_text_baseline(y, height, size, bold=False):
+    font_name = "Helvetica-Bold" if bold else "Helvetica"
+    ascent = pdfmetrics.getAscent(font_name, size)
+    descent = pdfmetrics.getDescent(font_name, size)
+    return y + (height - (ascent - descent)) / 2 - descent
+
+
 def fmt_hours(value):
     if value in ("", None):
         return ""
@@ -1026,7 +1034,6 @@ def render_month_pdf(buffer, user, data, year, month):
     detail_rows = detail_rows[:36]
     detail_row_h = min(5.2 * mm, max(3.4 * mm, (grid_y - 58 * mm) / max(len(detail_rows), 1)))
     detail_font_size = 5.8 if detail_row_h >= 4.4 * mm else 5.4
-    detail_text_y_offset = (detail_row_h - detail_font_size) / 2
     y = grid_y - detail_row_h
     red = colors.Color(0.82, 0.42, 0.42, alpha=0.65)
     for day, entry, first_row, entry_count in detail_rows:
@@ -1051,7 +1058,7 @@ def render_month_pdf(buffer, user, data, year, month):
         ]
         for idx, val in enumerate(vals):
             c.rect(x, y, col_widths[idx] * mm, detail_row_h)
-            draw_fitted_text(c, x + col_widths[idx] * mm / 2, y + detail_text_y_offset, val, col_widths[idx] * mm - 1 * mm, detail_font_size, False, "center")
+            draw_fitted_text(c, x + col_widths[idx] * mm / 2, centered_text_baseline(y, detail_row_h, detail_font_size), val, col_widths[idx] * mm - 1 * mm, detail_font_size, False, "center")
             x += col_widths[idx] * mm
         y -= detail_row_h
 
