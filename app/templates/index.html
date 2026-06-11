@@ -11,8 +11,8 @@
     <button>Anzeigen</button>
   </form>
   <div class="toolbar-actions">
-    <button type="button" class="primary" data-preview-url="{{ url_for('print_month', year=year, month=month, embed=1) }}" data-preview-title="Druckansicht">Druckansicht</button>
-    <button type="button" data-preview-url="{{ url_for('print_month', year=year, month=month, embed=1) }}" data-preview-title="PDF-Vorschau">PDF-Vorschau</button>
+    <a class="button primary" href="{{ url_for('print_month', year=year, month=month) }}" data-preview-url="{{ url_for('print_month', year=year, month=month, embed=1) }}" data-preview-title="Druckansicht">Druckansicht</a>
+    <a class="button" href="{{ url_for('print_month', year=year, month=month) }}" data-preview-url="{{ url_for('print_month', year=year, month=month, embed=1) }}" data-preview-title="PDF-Vorschau">PDF-Vorschau</a>
     <a class="button" href="{{ url_for('pdf', year=year, month=month) }}">PDF herunterladen</a>
   </div>
 </section>
@@ -162,37 +162,4 @@
     </table>
   </div>
 </section>
-<script>
-  const previewModal = document.getElementById('preview-modal');
-  const previewFrame = document.getElementById('preview-frame');
-  const previewTitle = document.getElementById('preview-title');
-  const previewClose = document.getElementById('preview-close');
-  const previewPrint = document.getElementById('preview-print');
-
-  document.querySelectorAll('[data-preview-url]').forEach((button) => {
-    button.addEventListener('click', () => {
-      previewTitle.textContent = button.dataset.previewTitle || 'Vorschau';
-      previewFrame.src = button.dataset.previewUrl;
-      previewModal.classList.add('open');
-      previewModal.setAttribute('aria-hidden', 'false');
-    });
-  });
-
-  function closePreview() {
-    previewModal.classList.remove('open');
-    previewModal.setAttribute('aria-hidden', 'true');
-    previewFrame.src = 'about:blank';
-  }
-
-  previewClose.addEventListener('click', closePreview);
-  previewModal.addEventListener('click', (event) => {
-    if (event.target === previewModal) closePreview();
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && previewModal.classList.contains('open')) closePreview();
-  });
-  previewPrint.addEventListener('click', () => {
-    if (previewFrame.contentWindow) previewFrame.contentWindow.print();
-  });
-</script>
 {% endblock %}

@@ -262,9 +262,9 @@ def create_app():
         if request.method == "POST":
             action = request.form.get("action", "save")
             if action == "seed":
-                seed_thuringia_holidays(get_db(), int(request.form["year"]), replace=False)
+                seed_thuringia_holidays(get_db(), int(request.form["year"]), replace=True)
                 get_db().commit()
-                flash("Thüringen-Feiertage wurden ergänzt.", "success")
+                flash("Thüringen-Feiertage wurden neu berechnet.", "success")
                 return redirect(url_for("admin_holidays", year=request.form["year"]))
             holiday_id = request.form.get("holiday_id")
             holiday_date = request.form.get("holiday_date")
@@ -282,6 +282,7 @@ def create_app():
                     year = parse_date(holiday_date).year
                 except sqlite3.IntegrityError:
                     flash("Für dieses Datum existiert bereits ein Feiertag.", "error")
+        ensure_thuringia_holidays_for_year(year)
         holidays = query_all(
             "SELECT * FROM holidays WHERE holiday_date BETWEEN ? AND ? ORDER BY holiday_date",
             (date(year, 1, 1).isoformat(), date(year, 12, 31).isoformat()),
@@ -371,9 +372,7 @@ def init_db(app):
             ensure_column(db, "readiness", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             ensure_column(db, "work_entries", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             seed_default_type(db)
-            seed_thuringia_holidays(db, datetime.now().year - 1, replace=False)
-            seed_thuringia_holidays(db, datetime.now().year, replace=False)
-            seed_thuringia_holidays(db, datetime.now().year + 1, replace=False)
+            seed_thuringia_holiday_range(db, datetime.now().year - 1, datetime.now().year + 5)
             admin = db.execute("SELECT id FROM users WHERE username = 'admin'").fetchone()
             if admin is None:
                 db.execute(
@@ -424,6 +423,11 @@ def thuringia_holidays(year):
     ]
 
 
+def seed_thuringia_holiday_range(db, start_year, end_year, replace=False):
+    for year in range(start_year, end_year + 1):
+        seed_thuringia_holidays(db, year, replace=replace)
+
+
 def seed_thuringia_holidays(db, year, replace=False):
     if replace:
         db.execute(
@@ -435,6 +439,12 @@ def seed_thuringia_holidays(db, year, replace=False):
             "INSERT OR IGNORE INTO holidays (holiday_date, name) VALUES (?, ?)",
             (holiday_date.isoformat(), name),
         )
+
+
+def ensure_thuringia_holidays_for_year(year):
+    db = get_db()
+    seed_thuringia_holidays(db, year, replace=False)
+    db.commit()
 
 
 def query_one(sql, params=()):
@@ -524,6 +534,7 @@ def easter_sunday(year):
 
 
 def holiday_dates_for_year(year):
+    ensure_thuringia_holidays_for_year(year)
     rows = query_all(
         "SELECT holiday_date FROM holidays WHERE holiday_date BETWEEN ? AND ?",
         (date(year, 1, 1).isoformat(), date(year, 12, 31).isoformat()),
