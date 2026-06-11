@@ -682,8 +682,10 @@ def month_data(user_id, year, month):
             }
         )
 
+    readiness_split = max(15, (len(readiness_display) + 1) // 2)
     return {
         "readiness": readiness_display,
+        "readiness_columns": [readiness_display[:readiness_split], readiness_display[readiness_split:]],
         "work_entries": month_work_entries,
         "days": days,
         "sum_soll": round(sum(d["soll"] for d in days), 2),
@@ -703,6 +705,21 @@ def draw_text(c, x, y, text, size=8, bold=False, align="left"):
         c.drawString(x, y, text)
 
 
+def fitted_text(c, text, max_width, size=8, bold=False):
+    text = str(text or "")
+    font_name = "Helvetica-Bold" if bold else "Helvetica"
+    if c.stringWidth(text, font_name, size) <= max_width:
+        return text
+    suffix = "..."
+    while text and c.stringWidth(text + suffix, font_name, size) > max_width:
+        text = text[:-1]
+    return text + suffix if text else ""
+
+
+def draw_fitted_text(c, x, y, text, max_width, size=8, bold=False, align="left"):
+    draw_text(c, x, y, fitted_text(c, text, max_width, size, bold), size, bold, align)
+
+
 def fmt_hours(value):
     if value in ("", None):
         return ""
@@ -714,8 +731,8 @@ def render_month_pdf(buffer, user, data, year, month):
     width, height = A4
     left = 12 * mm
     top = height - 22 * mm
-    top_row_h = 4.6 * mm
-    detail_row_h = 3.75 * mm
+    top_row_h = 3.35 * mm
+    detail_row_h = 3.4 * mm
 
     draw_text(c, left, top, "Rufbereitschaft", 11, True)
     c.line(left, top - 1, left + 28 * mm, top - 1)
@@ -729,42 +746,47 @@ def render_month_pdf(buffer, user, data, year, month):
     draw_text(c, left, top - 39 * mm, "Name:", 8, True)
     draw_text(c, left + 32 * mm, top - 39 * mm, user["last_name"] or "", 8, True)
 
-    table_x = 78 * mm
+    table_x = 62 * mm
     table_y = top - 12 * mm
-    cols = [36, 24, 22, 20, 20]
+    cols = [17, 14, 14, 10, 10]
     headers = ["", "Datum Beginn", "Datum Ende", "Uhrzeit von", "Uhrzeit bis"]
-    for i, header in enumerate(headers):
-        x = table_x + sum(cols[:i]) * mm
-        c.rect(x, table_y - top_row_h, cols[i] * mm, top_row_h)
-        draw_text(c, x + cols[i] * mm / 2, table_y - 3.6 * mm, header, 6.4, True, "center")
-    top_rows = max(len(data["readiness"]), 7)
-    for row_idx in range(top_rows):
-        y = table_y - (row_idx + 2) * top_row_h
-        item = data["readiness"][row_idx] if row_idx < len(data["readiness"]) else None
-        values = ["", "", "", "", ""]
-        if item:
-            values = [
-                item["kind"],
-                parse_date(item["start_date"]).strftime("%d.%m.%Y"),
-                parse_date(item["end_date"]).strftime("%d.%m.%Y"),
-                item["start_time"],
-                item["end_time"],
-            ]
-        for i, val in enumerate(values):
-            x = table_x + sum(cols[:i]) * mm
-            c.rect(x, y, cols[i] * mm, top_row_h)
-            draw_text(c, x + 1 * mm, y + 1.5 * mm, val, 5.9)
+    split_at = max(15, (len(data["readiness"]) + 1) // 2)
+    readiness_columns = [data["readiness"][:split_at], data["readiness"][split_at:]]
+    top_rows = max(max((len(column) for column in readiness_columns), default=0), 7)
+    table_width = sum(cols) * mm
+    for col_idx, column in enumerate(readiness_columns):
+        current_x = table_x + col_idx * (table_width + 3 * mm)
+        for i, header in enumerate(headers):
+            x = current_x + sum(cols[:i]) * mm
+            c.rect(x, table_y - top_row_h, cols[i] * mm, top_row_h)
+            draw_fitted_text(c, x + cols[i] * mm / 2, table_y - 2.45 * mm, header, cols[i] * mm - 1 * mm, 4.6, True, "center")
+        for row_idx in range(top_rows):
+            y = table_y - (row_idx + 2) * top_row_h
+            item = column[row_idx] if row_idx < len(column) else None
+            values = ["", "", "", "", ""]
+            if item:
+                values = [
+                    item["kind"],
+                    parse_date(item["start_date"]).strftime("%d.%m.%Y"),
+                    parse_date(item["end_date"]).strftime("%d.%m.%Y"),
+                    item["start_time"],
+                    item["end_time"],
+                ]
+            for i, val in enumerate(values):
+                x = current_x + sum(cols[:i]) * mm
+                c.rect(x, y, cols[i] * mm, top_row_h)
+                draw_fitted_text(c, x + 0.7 * mm, y + 1.15 * mm, val, cols[i] * mm - 1.4 * mm, 4.6)
 
     grid_x = left
-    grid_y = min(top - 70 * mm, table_y - (top_rows + 3) * top_row_h)
     col_widths = [9, 11, 13, 12, 12, 13, 36, 20, 18, 19, 16]
     headers = ["Tag", "", "Soll-Ruf-\nbereit-\nschaft", "von", "bis", "Std.", "Bemerkung", "Bezahlen\nx", "Freizeit\nx", "Ist-Rufbereit-\nschaft", "Erschwernis-\nzuschlag\nStd."]
     x = grid_x
-    header_h = 14 * mm
+    header_h = 12 * mm
+    grid_y = min(top - 68 * mm, table_y - (top_rows + 2) * top_row_h - header_h - 2 * mm)
     for idx, header in enumerate(headers):
         c.rect(x, grid_y, col_widths[idx] * mm, header_h)
         for line_no, line in enumerate(header.split("\n")):
-            draw_text(c, x + col_widths[idx] * mm / 2, grid_y + header_h - (line_no + 1) * 3.6 * mm, line, 5.8, True, "center")
+            draw_fitted_text(c, x + col_widths[idx] * mm / 2, grid_y + header_h - (line_no + 1) * 3.1 * mm, line, col_widths[idx] * mm - 1 * mm, 5.2, True, "center")
         x += col_widths[idx] * mm
 
     y = grid_y - detail_row_h
@@ -798,7 +820,7 @@ def render_month_pdf(buffer, user, data, year, month):
         ]
         for idx, val in enumerate(vals):
             c.rect(x, y, col_widths[idx] * mm, detail_row_h)
-            draw_text(c, x + col_widths[idx] * mm / 2, y + 1.1 * mm, val, 5.5, False, "center")
+            draw_fitted_text(c, x + col_widths[idx] * mm / 2, y + 1.05 * mm, val, col_widths[idx] * mm - 1 * mm, 5.0, False, "center")
             x += col_widths[idx] * mm
         y -= detail_row_h
 

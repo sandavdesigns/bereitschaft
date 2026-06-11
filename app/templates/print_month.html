@@ -38,7 +38,7 @@
       }
       .head {
         display: grid;
-        grid-template-columns: 58mm 1fr 32mm;
+        grid-template-columns: 58mm 1fr 28mm;
         column-gap: 10mm;
         align-items: start;
       }
@@ -51,11 +51,17 @@
       .person td { padding: 2.4mm 1mm; font-weight: bold; }
       .person td:first-child { width: 26mm; }
       .month { display: grid; grid-template-columns: 15mm 1fr; gap: 7mm; font-weight: bold; margin-top: 1mm; }
-      .top-table { margin-top: 17mm; font-size: 9px; }
+      .top-tables {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2mm;
+        margin-top: 13mm;
+      }
+      .top-table { font-size: 6px; }
       .top-table th, .top-table td {
         border: 1px solid #000;
-        height: 5.3mm;
-        padding: 0.8mm 1mm;
+        height: 3.35mm;
+        padding: 0.3mm 0.5mm;
         white-space: nowrap;
       }
       .top-table th { text-align: center; font-weight: bold; }
@@ -119,10 +125,12 @@
     </style>
   </head>
   <body>
-    <div class="actions">
-      <button onclick="window.print()">Drucken / PDF speichern</button>
-      <a href="{{ url_for('index', year=year, month=month) }}">Zurück</a>
-    </div>
+    {% if not request.args.get('embed') %}
+      <div class="actions">
+        <button onclick="window.print()">Drucken / PDF speichern</button>
+        <a href="{{ url_for('index', year=year, month=month) }}">Zurück</a>
+      </div>
+    {% endif %}
     <section class="page">
       <div class="head">
         <div>
@@ -136,25 +144,29 @@
           </div>
         </div>
         <div>
-          <table class="top-table">
-            <thead>
-              <tr><th></th><th>Datum Beginn</th><th>Datum Ende</th><th>Uhrzeit von</th><th>Uhrzeit bis</th></tr>
-            </thead>
-            <tbody>
-              {% for item in data.readiness %}
-                <tr>
-                  <td>{{ item.kind }}</td>
-                  <td>{{ item.start_date[8:10] ~ '.' ~ item.start_date[5:7] ~ '.' ~ item.start_date[0:4] }}</td>
-                  <td>{{ item.end_date[8:10] ~ '.' ~ item.end_date[5:7] ~ '.' ~ item.end_date[0:4] }}</td>
-                  <td>{{ item.start_time }}</td>
-                  <td>{{ item.end_time }}</td>
-                </tr>
-              {% endfor %}
-              {% for i in range(7 - data.readiness|length) %}
-                <tr><td></td><td></td><td></td><td></td><td></td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="top-tables">
+            {% for column in data.readiness_columns %}
+              <table class="top-table">
+                <thead>
+                  <tr><th></th><th>Datum Beginn</th><th>Datum Ende</th><th>Uhrzeit von</th><th>Uhrzeit bis</th></tr>
+                </thead>
+                <tbody>
+                  {% for item in column %}
+                    <tr>
+                      <td>{{ item.kind }}</td>
+                      <td>{{ item.start_date[8:10] ~ '.' ~ item.start_date[5:7] ~ '.' ~ item.start_date[0:4] }}</td>
+                      <td>{{ item.end_date[8:10] ~ '.' ~ item.end_date[5:7] ~ '.' ~ item.end_date[0:4] }}</td>
+                      <td>{{ item.start_time }}</td>
+                      <td>{{ item.end_time }}</td>
+                    </tr>
+                  {% endfor %}
+                  {% for i in range(7 - column|length) %}
+                    <tr><td></td><td></td><td></td><td></td><td></td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% endfor %}
+          </div>
         </div>
         <div class="month"><span>Monat:</span><span>{{ months[month-1][:3] }} {{ (year|string)[2:] }}</span></div>
       </div>

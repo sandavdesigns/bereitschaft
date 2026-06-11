@@ -11,10 +11,25 @@
     <button>Anzeigen</button>
   </form>
   <div class="toolbar-actions">
-    <a class="button primary" href="{{ url_for('print_month', year=year, month=month) }}" target="_blank">Druckansicht</a>
+    <button type="button" class="primary" data-preview-url="{{ url_for('print_month', year=year, month=month, embed=1) }}" data-preview-title="Druckansicht">Druckansicht</button>
+    <button type="button" data-preview-url="{{ url_for('print_month', year=year, month=month, embed=1) }}" data-preview-title="PDF-Vorschau">PDF-Vorschau</button>
     <a class="button" href="{{ url_for('pdf', year=year, month=month) }}">PDF herunterladen</a>
   </div>
 </section>
+
+<div class="preview-modal" id="preview-modal" aria-hidden="true">
+  <div class="preview-dialog" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+    <div class="preview-header">
+      <strong id="preview-title">Vorschau</strong>
+      <div class="preview-actions">
+        <button type="button" id="preview-print">Drucken</button>
+        <a class="button" href="{{ url_for('pdf', year=year, month=month) }}">PDF herunterladen</a>
+        <button type="button" class="danger" id="preview-close">Schließen</button>
+      </div>
+    </div>
+    <iframe id="preview-frame" title="Vorschau"></iframe>
+  </div>
+</div>
 
 <section class="forms">
   <div class="panel">
@@ -147,4 +162,37 @@
     </table>
   </div>
 </section>
+<script>
+  const previewModal = document.getElementById('preview-modal');
+  const previewFrame = document.getElementById('preview-frame');
+  const previewTitle = document.getElementById('preview-title');
+  const previewClose = document.getElementById('preview-close');
+  const previewPrint = document.getElementById('preview-print');
+
+  document.querySelectorAll('[data-preview-url]').forEach((button) => {
+    button.addEventListener('click', () => {
+      previewTitle.textContent = button.dataset.previewTitle || 'Vorschau';
+      previewFrame.src = button.dataset.previewUrl;
+      previewModal.classList.add('open');
+      previewModal.setAttribute('aria-hidden', 'false');
+    });
+  });
+
+  function closePreview() {
+    previewModal.classList.remove('open');
+    previewModal.setAttribute('aria-hidden', 'true');
+    previewFrame.src = 'about:blank';
+  }
+
+  previewClose.addEventListener('click', closePreview);
+  previewModal.addEventListener('click', (event) => {
+    if (event.target === previewModal) closePreview();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && previewModal.classList.contains('open')) closePreview();
+  });
+  previewPrint.addEventListener('click', () => {
+    if (previewFrame.contentWindow) previewFrame.contentWindow.print();
+  });
+</script>
 {% endblock %}
