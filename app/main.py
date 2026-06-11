@@ -110,6 +110,10 @@ def create_app():
         user = current_user()
         readiness_type_id = int(request.form["readiness_type_id"])
         session["last_readiness_type_id"] = readiness_type_id
+        friday_holiday_segment = request.form.get("friday_holiday_segment", "first")
+        if friday_holiday_segment not in ("first", "second"):
+            flash("Bitte Vormittag oder Nachmittag auswählen.", "error")
+            return month_redirect()
         start_date = date_from_month_form("start_day")
         end_date = date_from_month_form("end_day")
         if end_date < start_date:
@@ -117,8 +121,8 @@ def create_app():
             return month_redirect()
         execute(
             """
-            INSERT INTO readiness (user_id, readiness_type_id, start_date, end_date, kind, start_time, end_time, hours_per_day)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO readiness (user_id, readiness_type_id, start_date, end_date, kind, start_time, end_time, hours_per_day, friday_holiday_segment)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user["id"],
@@ -129,10 +133,25 @@ def create_app():
                 "00:00",
                 "00:00",
                 0,
+                friday_holiday_segment,
             ),
         )
         flash("Bereitschaft gespeichert.", "success")
         return month_redirect(start_date.year, start_date.month)
+
+    @app.post("/readiness/<int:item_id>/segment")
+    @login_required
+    def update_readiness_segment(item_id):
+        segment = request.form.get("friday_holiday_segment", "first")
+        if segment not in ("first", "second"):
+            flash("Bitte Vormittag oder Nachmittag auswählen.", "error")
+            return month_redirect()
+        execute(
+            "UPDATE readiness SET friday_holiday_segment = ? WHERE id = ? AND user_id = ?",
+            (segment, item_id, current_user()["id"]),
+        )
+        flash("Freitag-Feiertag gespeichert.", "success")
+        return month_redirect()
 
     @app.post("/readiness/<int:item_id>/delete")
     @login_required
@@ -240,7 +259,6 @@ def create_app():
             values = (
                 request.form.get("name", "").strip(),
                 request.form.get("display_name", "").strip(),
-                request.form.get("friday_holiday_segment", "first"),
                 normalize_time_input(request.form.get("weekday_start", "")),
                 normalize_time_input(request.form.get("weekday_end", "")),
                 normalize_time_input(request.form.get("friday_start", "")),
@@ -254,9 +272,7 @@ def create_app():
                 flash("Name ist Pflicht.", "error")
             elif not values[1]:
                 flash("Anzeigename ist Pflicht.", "error")
-            elif values[2] not in ("first", "second", "full"):
-                flash("Bitte Freitag-Feiertag auswählen.", "error")
-            elif not all(valid_time_value(value, allow_empty=True) for value in values[3:]):
+            elif not all(valid_time_value(value, allow_empty=True) for value in values[2:]):
                 flash("Bitte Zeiten im Format HH:MM eingeben.", "error")
             else:
                 try:
@@ -264,8 +280,7 @@ def create_app():
                         execute(
                             """
                             UPDATE readiness_types
-                            SET name = ?, display_name = ?, friday_holiday_segment = ?,
-                                weekday_start = ?, weekday_end = ?, friday_start = ?, friday_end = ?,
+                            SET name = ?, display_name = ?, weekday_start = ?, weekday_end = ?, friday_start = ?, friday_end = ?,
                                 weekend_start = ?, weekend_end = ?, holiday_start = ?, holiday_end = ?
                             WHERE id = ?
                             """,
@@ -276,8 +291,8 @@ def create_app():
                         execute(
                             """
                             INSERT INTO readiness_types
-                            (name, display_name, friday_holiday_segment, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            (name, display_name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             """,
                             values,
                         )
@@ -373,7 +388,8 @@ def init_db(app):
                     kind TEXT NOT NULL,
                     start_time TEXT NOT NULL,
                     end_time TEXT NOT NULL,
-                    hours_per_day REAL NOT NULL
+                    hours_per_day REAL NOT NULL,
+                    friday_holiday_segment TEXT NOT NULL DEFAULT 'first'
                 );
 
                 CREATE TABLE IF NOT EXISTS work_entries (
@@ -391,7 +407,6 @@ def init_db(app):
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE,
                     display_name TEXT NOT NULL DEFAULT '',
-                    friday_holiday_segment TEXT NOT NULL DEFAULT 'first',
                     weekday_start TEXT NOT NULL DEFAULT '',
                     weekday_end TEXT NOT NULL DEFAULT '',
                     friday_start TEXT NOT NULL DEFAULT '',
@@ -411,10 +426,25 @@ def init_db(app):
                 """
             )
             ensure_column(db, "readiness", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
+            ensure_column(db, "readiness", "friday_holiday_segment", "TEXT NOT NULL DEFAULT 'first'")
             ensure_column(db, "work_entries", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             ensure_column(db, "readiness_types", "display_name", "TEXT NOT NULL DEFAULT ''")
-            ensure_column(db, "readiness_types", "friday_holiday_segment", "TEXT NOT NULL DEFAULT 'first'")
             db.execute("UPDATE readiness_types SET display_name = name WHERE display_name = ''")
+            if "friday_holiday_segment" in table_columns(db, "readiness_types"):
+                db.execute(
+                    """
+                    UPDATE readiness
+                    SET friday_holiday_segment = (
+                        SELECT readiness_types.friday_holiday_segment
+                        FROM readiness_types
+                        WHERE readiness_types.id = readiness.readiness_type_id
+                    )
+                    WHERE friday_holiday_segment = 'first'
+                      AND readiness_type_id IN (
+                        SELECT id FROM readiness_types WHERE friday_holiday_segment = 'second'
+                    )
+                    """
+                )
             seed_default_type(db)
             seed_thuringia_holiday_range(db, datetime.now().year - 1, datetime.now().year + 5)
             admin = db.execute("SELECT id FROM users WHERE username = 'admin'").fetchone()
@@ -429,9 +459,12 @@ def init_db(app):
             db.commit()
 
 
+def table_columns(db, table):
+    return [row[1] for row in db.execute(f"PRAGMA table_info({table})").fetchall()]
+
+
 def ensure_column(db, table, column, definition):
-    columns = [row[1] for row in db.execute(f"PRAGMA table_info({table})").fetchall()]
-    if column not in columns:
+    if column not in table_columns(db, table):
         db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
@@ -441,8 +474,8 @@ def seed_default_type(db):
         db.execute(
             """
             INSERT INTO readiness_types
-            (name, display_name, friday_holiday_segment, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
-            VALUES ('Bereitschaft', 'Bereitschaft', 'first', '12:15', '18:00', '12:15', '18:00', '06:00', '18:00', '06:00', '18:00')
+            (name, display_name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
+            VALUES ('Bereitschaft', 'Bereitschaft', '12:15', '18:00', '12:15', '18:00', '06:00', '18:00', '06:00', '18:00')
             """
         )
     default_type = db.execute("SELECT id FROM readiness_types ORDER BY id LIMIT 1").fetchone()
@@ -669,6 +702,10 @@ def readiness_kind(item):
     return item["type_display_name"] or item["type_name"] or item["kind"]
 
 
+def friday_holiday_segment_label(segment):
+    return "Nachmittag" if segment == "second" else "Vormittag"
+
+
 def month_redirect_from_form(date_field="start_date"):
     d = parse_date(request.form[date_field])
     return redirect(url_for("index", year=d.year, month=d.month))
@@ -697,7 +734,7 @@ def readiness_rules_for_day(user_id, day):
     rows = query_all(
         """
         SELECT r.*, t.name AS type_name, t.display_name AS type_display_name,
-               t.friday_holiday_segment, t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
+               t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
                t.weekend_start, t.weekend_end, t.holiday_start, t.holiday_end
         FROM readiness r
         LEFT JOIN readiness_types t ON t.id = r.readiness_type_id
@@ -768,7 +805,7 @@ def month_data(user_id, year, month):
     readiness = query_all(
         """
         SELECT r.*, t.name AS type_name, t.display_name AS type_display_name,
-               t.friday_holiday_segment, t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
+               t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
                t.weekend_start, t.weekend_end, t.holiday_start, t.holiday_end
         FROM readiness r
         LEFT JOIN readiness_types t ON t.id = r.readiness_type_id
@@ -803,6 +840,8 @@ def month_data(user_id, year, month):
                         "end_date": current.isoformat(),
                         "start_time": rule["start_time"],
                         "end_time": rule["end_time"],
+                        "friday_holiday_segment": item["friday_holiday_segment"],
+                        "friday_holiday_segment_label": friday_holiday_segment_label(item["friday_holiday_segment"]),
                     }
                 )
 

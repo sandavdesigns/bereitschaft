@@ -30,6 +30,12 @@
           {% endfor %}
         </select>
       </label>
+      <label>Fr-Feiertag
+        <select name="friday_holiday_segment">
+          <option value="first">Vormittag</option>
+          <option value="second">Nachmittag</option>
+        </select>
+      </label>
       <button class="primary">Speichern</button>
     </form>
   </div>
@@ -118,6 +124,17 @@
         {% for item in data.readiness %}
           <tr>
             <td>{{ item.kind }}</td><td>{{ item.start_date }} bis {{ item.end_date }}</td><td>{{ item.start_time }}-{{ item.end_time }}</td>
+            <td>
+              <form method="post" action="{{ url_for('update_readiness_segment', item_id=item.id) }}" class="inline-type-form">
+                <input type="hidden" name="year" value="{{ year }}">
+                <input type="hidden" name="month" value="{{ month }}">
+                <select name="friday_holiday_segment">
+                  <option value="first" {% if item.friday_holiday_segment == 'first' %}selected{% endif %}>Vormittag</option>
+                  <option value="second" {% if item.friday_holiday_segment == 'second' %}selected{% endif %}>Nachmittag</option>
+                </select>
+                <button>Speichern</button>
+              </form>
+            </td>
             <td>
               <form method="post" action="{{ url_for('delete_readiness', item_id=item.id) }}">
                 <input type="hidden" name="year" value="{{ year }}">
