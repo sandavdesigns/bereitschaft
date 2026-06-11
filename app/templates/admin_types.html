@@ -13,6 +13,13 @@
     <label>Sa/So bis <input type="text" name="weekend_end" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
     <label>Feiertag von <input type="text" name="holiday_start" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
     <label>Feiertag bis <input type="text" name="holiday_end" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
+    <label>Fr-Feiertag
+      <select name="friday_holiday_segment">
+        <option value="first">1. Hälfte</option>
+        <option value="second">2. Hälfte</option>
+        <option value="full">Ganzer Tag</option>
+      </select>
+    </label>
     <button class="primary">Anlegen</button>
   </form>
 </section>
@@ -28,6 +35,7 @@
         <th>Fr</th>
         <th>Sa/So</th>
         <th>Feiertag</th>
+        <th>Fr-Feiertag</th>
         <th>Status</th>
         <th></th>
       </tr>
@@ -57,6 +65,13 @@
           <td>
             <input form="type-{{ type.id }}" type="text" name="holiday_start" value="{{ type.holiday_start }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
             <input form="type-{{ type.id }}" type="text" name="holiday_end" value="{{ type.holiday_end }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
+          </td>
+          <td>
+            <select form="type-{{ type.id }}" name="friday_holiday_segment">
+              <option value="first" {% if type.friday_holiday_segment == 'first' %}selected{% endif %}>1. Hälfte</option>
+              <option value="second" {% if type.friday_holiday_segment == 'second' %}selected{% endif %}>2. Hälfte</option>
+              <option value="full" {% if type.friday_holiday_segment == 'full' %}selected{% endif %}>Ganzer Tag</option>
+            </select>
           </td>
           <td>{{ "aktiv" if type.active else "inaktiv" }}</td>
           <td class="actions">

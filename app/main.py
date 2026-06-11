@@ -240,6 +240,7 @@ def create_app():
             values = (
                 request.form.get("name", "").strip(),
                 request.form.get("display_name", "").strip(),
+                request.form.get("friday_holiday_segment", "first"),
                 normalize_time_input(request.form.get("weekday_start", "")),
                 normalize_time_input(request.form.get("weekday_end", "")),
                 normalize_time_input(request.form.get("friday_start", "")),
@@ -253,7 +254,9 @@ def create_app():
                 flash("Name ist Pflicht.", "error")
             elif not values[1]:
                 flash("Anzeigename ist Pflicht.", "error")
-            elif not all(valid_time_value(value, allow_empty=True) for value in values[2:]):
+            elif values[2] not in ("first", "second", "full"):
+                flash("Bitte Freitag-Feiertag auswählen.", "error")
+            elif not all(valid_time_value(value, allow_empty=True) for value in values[3:]):
                 flash("Bitte Zeiten im Format HH:MM eingeben.", "error")
             else:
                 try:
@@ -261,7 +264,8 @@ def create_app():
                         execute(
                             """
                             UPDATE readiness_types
-                            SET name = ?, display_name = ?, weekday_start = ?, weekday_end = ?, friday_start = ?, friday_end = ?,
+                            SET name = ?, display_name = ?, friday_holiday_segment = ?,
+                                weekday_start = ?, weekday_end = ?, friday_start = ?, friday_end = ?,
                                 weekend_start = ?, weekend_end = ?, holiday_start = ?, holiday_end = ?
                             WHERE id = ?
                             """,
@@ -272,8 +276,8 @@ def create_app():
                         execute(
                             """
                             INSERT INTO readiness_types
-                            (name, display_name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            (name, display_name, friday_holiday_segment, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             """,
                             values,
                         )
@@ -387,6 +391,7 @@ def init_db(app):
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE,
                     display_name TEXT NOT NULL DEFAULT '',
+                    friday_holiday_segment TEXT NOT NULL DEFAULT 'first',
                     weekday_start TEXT NOT NULL DEFAULT '',
                     weekday_end TEXT NOT NULL DEFAULT '',
                     friday_start TEXT NOT NULL DEFAULT '',
@@ -408,6 +413,7 @@ def init_db(app):
             ensure_column(db, "readiness", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             ensure_column(db, "work_entries", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             ensure_column(db, "readiness_types", "display_name", "TEXT NOT NULL DEFAULT ''")
+            ensure_column(db, "readiness_types", "friday_holiday_segment", "TEXT NOT NULL DEFAULT 'first'")
             db.execute("UPDATE readiness_types SET display_name = name WHERE display_name = ''")
             seed_default_type(db)
             seed_thuringia_holiday_range(db, datetime.now().year - 1, datetime.now().year + 5)
@@ -435,8 +441,8 @@ def seed_default_type(db):
         db.execute(
             """
             INSERT INTO readiness_types
-            (name, display_name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
-            VALUES ('Bereitschaft', 'Bereitschaft', '12:15', '18:00', '12:15', '18:00', '06:00', '18:00', '06:00', '18:00')
+            (name, display_name, friday_holiday_segment, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
+            VALUES ('Bereitschaft', 'Bereitschaft', 'first', '12:15', '18:00', '12:15', '18:00', '06:00', '18:00', '06:00', '18:00')
             """
         )
     default_type = db.execute("SELECT id FROM readiness_types ORDER BY id LIMIT 1").fetchone()
@@ -630,7 +636,7 @@ def rule_for_day(readiness_type, day, holiday_dates=None):
     if is_holiday(day, holiday_dates):
         start, end = readiness_type["holiday_start"], readiness_type["holiday_end"]
         if start and end and day.weekday() == 4:
-            start, end, hours = first_half_interval(start, end)
+            start, end, hours = split_friday_holiday_interval(start, end, readiness_type["friday_holiday_segment"])
         else:
             hours = None
     elif day.weekday() == 4:
@@ -691,7 +697,7 @@ def readiness_rules_for_day(user_id, day):
     rows = query_all(
         """
         SELECT r.*, t.name AS type_name, t.display_name AS type_display_name,
-               t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
+               t.friday_holiday_segment, t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
                t.weekend_start, t.weekend_end, t.holiday_start, t.holiday_end
         FROM readiness r
         LEFT JOIN readiness_types t ON t.id = r.readiness_type_id
@@ -731,9 +737,13 @@ def interval_hours(start_value, end_value):
     return round((end - start) / 60, 2)
 
 
-def first_half_interval(start_value, end_value):
+def split_friday_holiday_interval(start_value, end_value, segment):
     start, end = normalized_interval(start_value, end_value)
     middle = start + int((end - start) / 2)
+    if segment == "second":
+        return minutes_to_time(middle), end_value, round((end - middle) / 60, 2)
+    if segment == "full":
+        return start_value, end_value, round((end - start) / 60, 2)
     return start_value, minutes_to_time(middle), round((middle - start) / 60, 2)
 
 
@@ -758,7 +768,7 @@ def month_data(user_id, year, month):
     readiness = query_all(
         """
         SELECT r.*, t.name AS type_name, t.display_name AS type_display_name,
-               t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
+               t.friday_holiday_segment, t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
                t.weekend_start, t.weekend_end, t.holiday_start, t.holiday_end
         FROM readiness r
         LEFT JOIN readiness_types t ON t.id = r.readiness_type_id
