@@ -51,25 +51,29 @@
   </div>
   <div class="panel">
     <h2>Einsatz / Mehrarbeit</h2>
-    <form method="post" action="{{ url_for('add_work') }}" class="form grid-form">
-      <input type="hidden" name="year" value="{{ year }}">
-      <input type="hidden" name="month" value="{{ month }}">
-      <label>Tag <input type="number" name="work_day" min="1" max="{{ data.days|length }}" required></label>
-      <label>Art
-        <select name="readiness_type_id" required>
-          {% for type in types %}
-            <option value="{{ type.id }}" {% if type.id == selected_type_id %}selected{% endif %}>{{ type.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>Von <input type="text" name="start_time" inputmode="numeric" placeholder="HH:MM" data-time-field required></label>
-      <label>Bis <input type="text" name="end_time" inputmode="numeric" placeholder="HH:MM" data-time-field required></label>
-      <label>Bemerkung <input name="note"></label>
-      <label>Ausgleich
-        <select name="compensation"><option>Freizeit</option><option>Bezahlen</option></select>
-      </label>
-      <button class="primary">Speichern</button>
-    </form>
+    {% if data.has_readiness %}
+      <form method="post" action="{{ url_for('add_work') }}" class="form grid-form">
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <label>Tag <input type="number" name="work_day" min="1" max="{{ data.days|length }}" required></label>
+        <label>Art
+          <select name="readiness_type_id" required>
+            {% for type in types %}
+              <option value="{{ type.id }}" {% if type.id == selected_type_id %}selected{% endif %}>{{ type.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Von <input type="text" name="start_time" inputmode="numeric" placeholder="HH:MM" data-time-field required></label>
+        <label>Bis <input type="text" name="end_time" inputmode="numeric" placeholder="HH:MM" data-time-field required></label>
+        <label>Bemerkung <input name="note"></label>
+        <label>Ausgleich
+          <select name="compensation"><option>Freizeit</option><option>Bezahlen</option></select>
+        </label>
+        <button class="primary">Speichern</button>
+      </form>
+    {% else %}
+      <p class="empty-state">Für diesen Monat ist keine Bereitschaft eingetragen. Einsätze können erst danach erfasst werden.</p>
+    {% endif %}
   </div>
 </section>
 

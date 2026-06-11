@@ -147,6 +147,9 @@ def create_app():
         readiness_type_id = int(request.form["readiness_type_id"])
         session["last_readiness_type_id"] = readiness_type_id
         work_date = date_from_month_form("work_day")
+        if not user_has_readiness_on_day(user["id"], work_date):
+            flash("Einsatz kann nur an Tagen mit Bereitschaft eingetragen werden.", "error")
+            return month_redirect(work_date.year, work_date.month)
         start_time = normalize_time_input(request.form["start_time"])
         end_time = normalize_time_input(request.form["end_time"])
         if not valid_time_value(start_time) or not valid_time_value(end_time):
@@ -656,6 +659,18 @@ def date_from_month_form(day_field):
     return date(year, month, day)
 
 
+def user_has_readiness_on_day(user_id, day):
+    row = query_one(
+        """
+        SELECT id FROM readiness
+        WHERE user_id = ? AND start_date <= ? AND end_date >= ?
+        LIMIT 1
+        """,
+        (user_id, day.isoformat(), day.isoformat()),
+    )
+    return row is not None
+
+
 def month_data(user_id, year, month):
     first = date(year, month, 1)
     last = date(year, month, calendar.monthrange(year, month)[1])
@@ -756,6 +771,7 @@ def month_data(user_id, year, month):
     return {
         "readiness": readiness_display,
         "readiness_columns": [readiness_display[:readiness_split], readiness_display[readiness_split:]],
+        "has_readiness": len(readiness) > 0,
         "work_entries": month_work_entries,
         "days": days,
         "sum_soll": round(sum(d["soll"] for d in days), 2),
