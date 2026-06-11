@@ -57,12 +57,24 @@
         gap: 2mm;
         margin-top: 13mm;
       }
+      .top-tables.single {
+        grid-template-columns: 1fr;
+        max-width: 118mm;
+        margin-left: auto;
+        margin-right: auto;
+      }
       .top-table { font-size: 6px; }
+      .top-tables.single .top-table { font-size: 8px; }
       .top-table th, .top-table td {
         border: 1px solid #000;
         height: 3.35mm;
         padding: 0.3mm 0.5mm;
         white-space: nowrap;
+      }
+      .top-tables.single .top-table th,
+      .top-tables.single .top-table td {
+        height: 5mm;
+        padding: 0.6mm 0.9mm;
       }
       .top-table th { text-align: center; font-weight: bold; }
       .main-table {
@@ -144,7 +156,7 @@
           </div>
         </div>
         <div>
-          <div class="top-tables">
+          <div class="top-tables {% if data.readiness_columns|length == 1 %}single{% endif %}">
             {% for column in data.readiness_columns %}
               <table class="top-table">
                 <thead>

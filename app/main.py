@@ -810,10 +810,10 @@ def month_data(user_id, year, month):
             }
         )
 
-    readiness_split = max(15, (len(readiness_display) + 1) // 2)
+    readiness_split = len(readiness_display) if len(readiness_display) <= 8 else (len(readiness_display) + 1) // 2
     return {
         "readiness": readiness_display,
-        "readiness_columns": [readiness_display[:readiness_split], readiness_display[readiness_split:]],
+        "readiness_columns": [column for column in (readiness_display[:readiness_split], readiness_display[readiness_split:]) if column],
         "has_readiness": len(readiness) > 0,
         "work_entries": month_work_entries,
         "days": days,
@@ -860,8 +860,8 @@ def render_month_pdf(buffer, user, data, year, month):
     width, height = A4
     left = 12 * mm
     top = height - 22 * mm
-    top_row_h = 3.35 * mm
-    detail_row_h = 3.4 * mm
+    compact_top = len(data["readiness"]) > 8
+    top_row_h = (3.7 if compact_top else 5.0) * mm
 
     draw_text(c, left, top, "Rufbereitschaft", 11, True)
     c.line(left, top - 1, left + 28 * mm, top - 1)
@@ -875,12 +875,12 @@ def render_month_pdf(buffer, user, data, year, month):
     draw_text(c, left, top - 39 * mm, "Name:", 8, True)
     draw_text(c, left + 32 * mm, top - 39 * mm, user["last_name"] or "", 8, True)
 
-    table_x = 62 * mm
+    table_x = (60 if compact_top else 76) * mm
     table_y = top - 12 * mm
-    cols = [17, 14, 14, 10, 10]
+    cols = [18, 15, 15, 11, 11] if compact_top else [34, 24, 24, 18, 18]
     headers = ["", "Datum Beginn", "Datum Ende", "Uhrzeit von", "Uhrzeit bis"]
-    split_at = max(15, (len(data["readiness"]) + 1) // 2)
-    readiness_columns = [data["readiness"][:split_at], data["readiness"][split_at:]]
+    split_at = len(data["readiness"]) if not compact_top else (len(data["readiness"]) + 1) // 2
+    readiness_columns = [column for column in (data["readiness"][:split_at], data["readiness"][split_at:]) if column]
     top_rows = max(max((len(column) for column in readiness_columns), default=0), 7)
     table_width = sum(cols) * mm
     for col_idx, column in enumerate(readiness_columns):
@@ -888,7 +888,7 @@ def render_month_pdf(buffer, user, data, year, month):
         for i, header in enumerate(headers):
             x = current_x + sum(cols[:i]) * mm
             c.rect(x, table_y - top_row_h, cols[i] * mm, top_row_h)
-            draw_fitted_text(c, x + cols[i] * mm / 2, table_y - 2.45 * mm, header, cols[i] * mm - 1 * mm, 4.6, True, "center")
+            draw_fitted_text(c, x + cols[i] * mm / 2, table_y - (2.65 if compact_top else 3.5) * mm, header, cols[i] * mm - 1 * mm, 5.1 if compact_top else 6.1, True, "center")
         for row_idx in range(top_rows):
             y = table_y - (row_idx + 2) * top_row_h
             item = column[row_idx] if row_idx < len(column) else None
@@ -904,7 +904,7 @@ def render_month_pdf(buffer, user, data, year, month):
             for i, val in enumerate(values):
                 x = current_x + sum(cols[:i]) * mm
                 c.rect(x, y, cols[i] * mm, top_row_h)
-                draw_fitted_text(c, x + 0.7 * mm, y + 1.15 * mm, val, cols[i] * mm - 1.4 * mm, 4.6)
+                draw_fitted_text(c, x + 0.7 * mm, y + (1.25 if compact_top else 1.7) * mm, val, cols[i] * mm - 1.4 * mm, 5.0 if compact_top else 5.8)
 
     grid_x = left
     col_widths = [9, 11, 13, 12, 12, 13, 36, 20, 18, 19, 16]
@@ -918,7 +918,6 @@ def render_month_pdf(buffer, user, data, year, month):
             draw_fitted_text(c, x + col_widths[idx] * mm / 2, grid_y + header_h - (line_no + 1) * 3.1 * mm, line, col_widths[idx] * mm - 1 * mm, 5.2, True, "center")
         x += col_widths[idx] * mm
 
-    y = grid_y - detail_row_h
     detail_rows = []
     for day in data["days"]:
         entries = list(day["entries"])
@@ -926,6 +925,8 @@ def render_month_pdf(buffer, user, data, year, month):
         for extra in entries[1:]:
             detail_rows.append((day, extra, False, len(entries)))
     detail_rows = detail_rows[:36]
+    detail_row_h = min(5.2 * mm, max(3.4 * mm, (grid_y - 47 * mm) / max(len(detail_rows), 1)))
+    y = grid_y - detail_row_h
     red = colors.Color(0.82, 0.42, 0.42, alpha=0.65)
     for day, entry, first_row, entry_count in detail_rows:
         is_weekend = day["date"].weekday() >= 5 or day.get("holiday")
