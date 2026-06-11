@@ -188,7 +188,7 @@
                 <td>{{ entry.start_time if entry else '' }}</td>
                 <td>{{ entry.end_time if entry else '' }}</td>
                 <td>{{ ('%.2f'|format(entry.hours)).replace('.', ',') if entry else '0,00' }}</td>
-                <td class="note">{{ entry.note_display if entry else '' }}</td>
+                <td class="note">{{ entry.remark if entry else '' }}</td>
                 <td>{{ 'x' if entry and entry.compensation == 'Bezahlen' else '' }}</td>
                 <td>{{ 'x' if entry and entry.compensation == 'Freizeit' else '' }}</td>
                 <td>{{ ('%.2f'|format(day.ist)).replace('.', ',') if n == row_count - 1 else '' }}</td>

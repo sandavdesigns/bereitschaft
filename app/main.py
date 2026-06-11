@@ -548,7 +548,7 @@ def rule_for_day(readiness_type, day, holiday_dates=None):
     return {"start_time": start, "end_time": end, "hours": decimal_hours(start, end)}
 
 
-def work_note_display(day_readiness, note):
+def work_remark(day_readiness, note):
     kinds = []
     for item in day_readiness:
         if item["kind"] not in kinds:
@@ -648,7 +648,7 @@ def month_data(user_id, year, month):
                         "start_time": w["start_time"],
                         "end_time": w["end_time"],
                         "note": w["note"],
-                        "note_display": work_note_display(day_readiness, w["note"]),
+                        "remark": work_remark(day_readiness, w["note"]),
                         "compensation": w["compensation"],
                         "hours": decimal_hours(w["start_time"], w["end_time"]),
                     }
@@ -776,7 +776,7 @@ def render_month_pdf(buffer, user, data, year, month):
             entry["start_time"] if entry else "",
             entry["end_time"] if entry else "",
             fmt_hours(decimal_hours(entry["start_time"], entry["end_time"])) if entry else "0,00",
-            entry["note_display"] if entry else "",
+            entry["remark"] if entry else "",
             "x" if entry and entry["compensation"] == "Bezahlen" else "",
             "x" if entry and entry["compensation"] == "Freizeit" else "",
             fmt_hours(day["ist"]) if (not entry or entry == day["entries"][-1]) else "",

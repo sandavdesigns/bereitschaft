@@ -92,6 +92,19 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
 th { color: var(--muted); font-weight: 600; }
 .weekend { background: #f7dddd; }
+.form-preview-table { font-size: 13px; table-layout: fixed; }
+.form-preview-table th,
+.form-preview-table td {
+  border: 1px solid var(--line);
+  text-align: center;
+  vertical-align: middle;
+  padding: 6px 5px;
+}
+.form-preview-table th:nth-child(7),
+.form-preview-table td:nth-child(7) {
+  text-align: left;
+  width: 24%;
+}
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
 .kpis div { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fafafa; }
 .kpis span { display: block; color: var(--muted); font-size: 13px; }

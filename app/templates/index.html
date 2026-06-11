@@ -59,26 +59,42 @@
     <div><span>Mo-Fr</span><strong>{{ "%.2f"|format(data.sum_weekday) }}</strong></div>
     <div><span>Sa/So</span><strong>{{ "%.2f"|format(data.sum_weekend) }}</strong></div>
   </div>
-  <table>
-    <thead><tr><th>Tag</th><th>Art</th><th>Soll</th><th>Mehrarbeit</th><th>Ist</th><th>Einsätze</th></tr></thead>
+  <table class="form-preview-table">
+    <thead>
+      <tr>
+        <th>Tag</th>
+        <th></th>
+        <th>Soll-Ruf-<br>bereit-<br>schaft</th>
+        <th>von</th>
+        <th>bis</th>
+        <th>Std.</th>
+        <th>Bemerkung</th>
+        <th>Bezahlen<br>x</th>
+        <th>Freizeit<br>x</th>
+        <th>Ist-Rufbereit-<br>schaft</th>
+        <th>Erschwernis-<br>zuschlag<br>Std.</th>
+      </tr>
+    </thead>
     <tbody>
       {% for day in data.days %}
-        <tr class="{% if day.date.weekday() >= 5 or day.holiday %}weekend{% endif %}">
-          <td>{{ day.weekday }} {{ day.date.strftime('%d.%m.') }}</td>
-          <td>
-            {% for item in day.readiness %}
-              <div>{{ item.kind }} {{ item.start_time }}-{{ item.end_time }}</div>
-            {% endfor %}
-          </td>
-          <td>{% if day.soll %}{{ "%.2f"|format(day.soll) }}{% endif %}</td>
-          <td>{{ "%.2f"|format(day.mehrarbeit) }}</td>
-          <td>{{ "%.2f"|format(day.ist) }}</td>
-          <td>
-            {% for entry in day.entries %}
-              <div>{{ entry.start_time }}-{{ entry.end_time }} {{ entry.note_display }} ({{ entry.compensation }})</div>
-            {% endfor %}
-          </td>
-        </tr>
+        {% set entries = day.entries %}
+        {% set row_count = entries|length if entries|length > 0 else 1 %}
+        {% for n in range(row_count) %}
+          {% set entry = entries[n] if n < entries|length else none %}
+          <tr class="{% if day.date.weekday() >= 5 or day.holiday %}weekend{% endif %}">
+            <td>{{ day.weekday if n == 0 else '' }}</td>
+            <td>{{ day.date.day ~ '.' if n == 0 else '' }}</td>
+            <td>{{ ('%.2f'|format(day.soll)).replace('.', ',') if n == 0 and day.soll else '' }}</td>
+            <td>{{ entry.start_time if entry else '' }}</td>
+            <td>{{ entry.end_time if entry else '' }}</td>
+            <td>{{ ('%.2f'|format(entry.hours)).replace('.', ',') if entry else '0,00' }}</td>
+            <td>{{ entry.remark if entry else '' }}</td>
+            <td>{{ 'x' if entry and entry.compensation == 'Bezahlen' else '' }}</td>
+            <td>{{ 'x' if entry and entry.compensation == 'Freizeit' else '' }}</td>
+            <td>{{ ('%.2f'|format(day.ist)).replace('.', ',') if n == row_count - 1 else '' }}</td>
+            <td>{{ '0,00' if n == 0 else '' }}</td>
+          </tr>
+        {% endfor %}
       {% endfor %}
     </tbody>
   </table>
