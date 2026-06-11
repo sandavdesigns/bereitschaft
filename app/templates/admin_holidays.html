@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="toolbar panel">
+  <form method="get" class="month-select">
+    <input type="number" name="year" value="{{ year }}" min="2020" max="2100">
+    <button>Anzeigen</button>
+  </form>
+  <form method="post">
+    <input type="hidden" name="action" value="seed">
+    <input type="hidden" name="year" value="{{ year }}">
+    <button>Thüringen-Feiertage ergänzen</button>
+  </form>
+</section>
+
+<section class="panel">
+  <h1>Feiertage {{ year }}</h1>
+  <form method="post" class="form holiday-form">
+    <input type="hidden" name="action" value="save">
+    <label>Datum <input type="date" name="holiday_date" required></label>
+    <label>Name <input name="name" placeholder="Feiertag" required></label>
+    <button class="primary">Anlegen</button>
+  </form>
+  <table>
+    <thead>
+      <tr><th>Datum</th><th>Name</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for holiday in holidays %}
+        <tr>
+          <td>
+            <form id="holiday-{{ holiday.id }}" method="post" class="inline-type-form">
+              <input type="hidden" name="action" value="save">
+              <input type="hidden" name="holiday_id" value="{{ holiday.id }}">
+              <input type="date" name="holiday_date" value="{{ holiday.holiday_date }}" required>
+            </form>
+          </td>
+          <td><input form="holiday-{{ holiday.id }}" name="name" value="{{ holiday.name }}" required></td>
+          <td class="actions">
+            <button form="holiday-{{ holiday.id }}" class="primary">Speichern</button>
+            <form method="post" action="{{ url_for('delete_holiday', holiday_id=holiday.id) }}">
+              <button class="danger">Löschen</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

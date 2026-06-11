@@ -75,7 +75,7 @@
           <td>{{ "%.2f"|format(day.ist) }}</td>
           <td>
             {% for entry in day.entries %}
-              <div>{{ entry.start_time }}-{{ entry.end_time }} {{ entry.note }} ({{ entry.compensation }})</div>
+              <div>{{ entry.start_time }}-{{ entry.end_time }} {{ entry.note_display }} ({{ entry.compensation }})</div>
             {% endfor %}
           </td>
         </tr>

@@ -254,6 +254,47 @@ def create_app():
         execute("UPDATE readiness_types SET active = CASE active WHEN 1 THEN 0 ELSE 1 END WHERE id = ?", (type_id,))
         return redirect(url_for("admin_types"))
 
+    @app.route("/admin/holidays", methods=["GET", "POST"])
+    @admin_required
+    def admin_holidays():
+        year = int(request.args.get("year", datetime.now().year))
+        if request.method == "POST":
+            action = request.form.get("action", "save")
+            if action == "seed":
+                seed_thuringia_holidays(get_db(), int(request.form["year"]), replace=False)
+                get_db().commit()
+                flash("Thüringen-Feiertage wurden ergänzt.", "success")
+                return redirect(url_for("admin_holidays", year=request.form["year"]))
+            holiday_id = request.form.get("holiday_id")
+            holiday_date = request.form.get("holiday_date")
+            name = request.form.get("name", "").strip()
+            if not holiday_date or not name:
+                flash("Datum und Name sind Pflicht.", "error")
+            elif holiday_id:
+                execute("UPDATE holidays SET holiday_date = ?, name = ? WHERE id = ?", (holiday_date, name, int(holiday_id)))
+                flash("Feiertag gespeichert.", "success")
+                year = parse_date(holiday_date).year
+            else:
+                try:
+                    execute("INSERT INTO holidays (holiday_date, name) VALUES (?, ?)", (holiday_date, name))
+                    flash("Feiertag angelegt.", "success")
+                    year = parse_date(holiday_date).year
+                except sqlite3.IntegrityError:
+                    flash("Für dieses Datum existiert bereits ein Feiertag.", "error")
+        holidays = query_all(
+            "SELECT * FROM holidays WHERE holiday_date BETWEEN ? AND ? ORDER BY holiday_date",
+            (date(year, 1, 1).isoformat(), date(year, 12, 31).isoformat()),
+        )
+        return render_template("admin_holidays.html", user=current_user(), holidays=holidays, year=year)
+
+    @app.post("/admin/holidays/<int:holiday_id>/delete")
+    @admin_required
+    def delete_holiday(holiday_id):
+        row = query_one("SELECT holiday_date FROM holidays WHERE id = ?", (holiday_id,))
+        year = parse_date(row["holiday_date"]).year if row else datetime.now().year
+        execute("DELETE FROM holidays WHERE id = ?", (holiday_id,))
+        return redirect(url_for("admin_holidays", year=year))
+
     return app
 
 
@@ -317,10 +358,19 @@ def init_db(app):
                     holiday_end TEXT NOT NULL DEFAULT '',
                     active INTEGER NOT NULL DEFAULT 1
                 );
+
+                CREATE TABLE IF NOT EXISTS holidays (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    holiday_date TEXT NOT NULL UNIQUE,
+                    name TEXT NOT NULL
+                );
                 """
             )
             ensure_column(db, "readiness", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             seed_default_type(db)
+            seed_thuringia_holidays(db, datetime.now().year - 1, replace=False)
+            seed_thuringia_holidays(db, datetime.now().year, replace=False)
+            seed_thuringia_holidays(db, datetime.now().year + 1, replace=False)
             admin = db.execute("SELECT id FROM users WHERE username = 'admin'").fetchone()
             if admin is None:
                 db.execute(
@@ -352,6 +402,36 @@ def seed_default_type(db):
     default_type = db.execute("SELECT id FROM readiness_types ORDER BY id LIMIT 1").fetchone()
     if default_type is not None:
         db.execute("UPDATE readiness SET readiness_type_id = ? WHERE readiness_type_id IS NULL", (default_type[0],))
+
+
+def thuringia_holidays(year):
+    easter = easter_sunday(year)
+    return [
+        (date(year, 1, 1), "Neujahr"),
+        (easter - timedelta(days=2), "Karfreitag"),
+        (easter + timedelta(days=1), "Ostermontag"),
+        (date(year, 5, 1), "Tag der Arbeit"),
+        (easter + timedelta(days=39), "Christi Himmelfahrt"),
+        (easter + timedelta(days=50), "Pfingstmontag"),
+        (date(year, 9, 20), "Weltkindertag"),
+        (date(year, 10, 3), "Tag der Deutschen Einheit"),
+        (date(year, 10, 31), "Reformationstag"),
+        (date(year, 12, 25), "1. Weihnachtstag"),
+        (date(year, 12, 26), "2. Weihnachtstag"),
+    ]
+
+
+def seed_thuringia_holidays(db, year, replace=False):
+    if replace:
+        db.execute(
+            "DELETE FROM holidays WHERE holiday_date BETWEEN ? AND ?",
+            (date(year, 1, 1).isoformat(), date(year, 12, 31).isoformat()),
+        )
+    for holiday_date, name in thuringia_holidays(year):
+        db.execute(
+            "INSERT OR IGNORE INTO holidays (holiday_date, name) VALUES (?, ?)",
+            (holiday_date.isoformat(), name),
+        )
 
 
 def query_one(sql, params=()):
@@ -440,29 +520,22 @@ def easter_sunday(year):
     return date(year, month, day)
 
 
-def holidays_for_year(year):
-    easter = easter_sunday(year)
-    return {
-        date(year, 1, 1),
-        easter - timedelta(days=2),
-        easter + timedelta(days=1),
-        date(year, 5, 1),
-        easter + timedelta(days=39),
-        easter + timedelta(days=50),
-        easter + timedelta(days=60),
-        date(year, 10, 3),
-        date(year, 11, 1),
-        date(year, 12, 25),
-        date(year, 12, 26),
-    }
+def holiday_dates_for_year(year):
+    rows = query_all(
+        "SELECT holiday_date FROM holidays WHERE holiday_date BETWEEN ? AND ?",
+        (date(year, 1, 1).isoformat(), date(year, 12, 31).isoformat()),
+    )
+    return {parse_date(row["holiday_date"]) for row in rows}
 
 
-def is_holiday(day):
-    return day in holidays_for_year(day.year)
+def is_holiday(day, holiday_dates=None):
+    if holiday_dates is None:
+        holiday_dates = holiday_dates_for_year(day.year)
+    return day in holiday_dates
 
 
-def rule_for_day(readiness_type, day):
-    if is_holiday(day):
+def rule_for_day(readiness_type, day, holiday_dates=None):
+    if is_holiday(day, holiday_dates):
         start, end = readiness_type["holiday_start"], readiness_type["holiday_end"]
     elif day.weekday() == 4:
         start, end = readiness_type["friday_start"], readiness_type["friday_end"]
@@ -473,6 +546,18 @@ def rule_for_day(readiness_type, day):
     if not start or not end:
         return None
     return {"start_time": start, "end_time": end, "hours": decimal_hours(start, end)}
+
+
+def work_note_display(day_readiness, note):
+    kinds = []
+    for item in day_readiness:
+        if item["kind"] not in kinds:
+            kinds.append(item["kind"])
+    prefix = "/".join(kinds)
+    note = (note or "").strip()
+    if prefix and note:
+        return f"{prefix} - {note}"
+    return prefix or note
 
 
 def month_redirect_from_form(date_field="start_date"):
@@ -497,6 +582,7 @@ def date_from_month_form(day_field):
 def month_data(user_id, year, month):
     first = date(year, month, 1)
     last = date(year, month, calendar.monthrange(year, month)[1])
+    holiday_dates = holiday_dates_for_year(year)
     readiness = query_all(
         """
         SELECT r.*, t.name AS type_name, t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
@@ -522,7 +608,7 @@ def month_data(user_id, year, month):
         item_start = max(parse_date(item["start_date"]), first)
         item_end = min(parse_date(item["end_date"]), last)
         for current in daterange(item_start, item_end):
-            rule = rule_for_day(item, current)
+            rule = rule_for_day(item, current, holiday_dates)
             if rule:
                 readiness_display.append(
                     {
@@ -541,7 +627,7 @@ def month_data(user_id, year, month):
         day_readiness = []
         for r in readiness:
             if parse_date(r["start_date"]) <= current <= parse_date(r["end_date"]):
-                rule = rule_for_day(r, current)
+                rule = rule_for_day(r, current, holiday_dates)
                 if rule:
                     day_readiness.append(
                         {
@@ -562,6 +648,7 @@ def month_data(user_id, year, month):
                         "start_time": w["start_time"],
                         "end_time": w["end_time"],
                         "note": w["note"],
+                        "note_display": work_note_display(day_readiness, w["note"]),
                         "compensation": w["compensation"],
                         "hours": decimal_hours(w["start_time"], w["end_time"]),
                     }
@@ -572,7 +659,7 @@ def month_data(user_id, year, month):
             {
                 "date": current,
                 "weekday": WEEKDAYS[current.weekday()],
-                "holiday": is_holiday(current),
+                "holiday": is_holiday(current, holiday_dates),
                 "readiness": day_readiness,
                 "entries": entries,
                 "soll": round(soll, 2),
@@ -613,7 +700,7 @@ def render_month_pdf(buffer, user, data, year, month):
     width, height = A4
     left = 12 * mm
     top = height - 22 * mm
-    top_row_h = 5.0 * mm
+    top_row_h = 4.6 * mm
     detail_row_h = 3.75 * mm
 
     draw_text(c, left, top, "Rufbereitschaft", 11, True)
@@ -636,7 +723,8 @@ def render_month_pdf(buffer, user, data, year, month):
         x = table_x + sum(cols[:i]) * mm
         c.rect(x, table_y - top_row_h, cols[i] * mm, top_row_h)
         draw_text(c, x + cols[i] * mm / 2, table_y - 3.6 * mm, header, 6.4, True, "center")
-    for row_idx in range(7):
+    top_rows = max(len(data["readiness"]), 7)
+    for row_idx in range(top_rows):
         y = table_y - (row_idx + 2) * top_row_h
         item = data["readiness"][row_idx] if row_idx < len(data["readiness"]) else None
         values = ["", "", "", "", ""]
@@ -654,7 +742,7 @@ def render_month_pdf(buffer, user, data, year, month):
             draw_text(c, x + 1 * mm, y + 1.5 * mm, val, 5.9)
 
     grid_x = left
-    grid_y = top - 70 * mm
+    grid_y = min(top - 70 * mm, table_y - (top_rows + 3) * top_row_h)
     col_widths = [9, 11, 13, 12, 12, 13, 36, 20, 18, 19, 16]
     headers = ["Tag", "", "Soll-Ruf-\nbereit-\nschaft", "von", "bis", "Std.", "Bemerkung", "Bezahlen\nx", "Freizeit\nx", "Ist-Rufbereit-\nschaft", "Erschwernis-\nzuschlag\nStd."]
     x = grid_x
@@ -688,7 +776,7 @@ def render_month_pdf(buffer, user, data, year, month):
             entry["start_time"] if entry else "",
             entry["end_time"] if entry else "",
             fmt_hours(decimal_hours(entry["start_time"], entry["end_time"])) if entry else "0,00",
-            entry["note"] if entry else "",
+            entry["note_display"] if entry else "",
             "x" if entry and entry["compensation"] == "Bezahlen" else "",
             "x" if entry and entry["compensation"] == "Freizeit" else "",
             fmt_hours(day["ist"]) if (not entry or entry == day["entries"][-1]) else "",

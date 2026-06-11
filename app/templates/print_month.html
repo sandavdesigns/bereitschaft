@@ -141,15 +141,17 @@
               <tr><th></th><th>Datum Beginn</th><th>Datum Ende</th><th>Uhrzeit von</th><th>Uhrzeit bis</th></tr>
             </thead>
             <tbody>
-              {% for i in range(7) %}
-                {% set item = data.readiness[i] if i < data.readiness|length else none %}
+              {% for item in data.readiness %}
                 <tr>
-                  <td>{{ item.kind if item else '' }}</td>
-                  <td>{{ item.start_date[8:10] ~ '.' ~ item.start_date[5:7] ~ '.' ~ item.start_date[0:4] if item else '' }}</td>
-                  <td>{{ item.end_date[8:10] ~ '.' ~ item.end_date[5:7] ~ '.' ~ item.end_date[0:4] if item else '' }}</td>
-                  <td>{{ item.start_time if item else '' }}</td>
-                  <td>{{ item.end_time if item else '' }}</td>
+                  <td>{{ item.kind }}</td>
+                  <td>{{ item.start_date[8:10] ~ '.' ~ item.start_date[5:7] ~ '.' ~ item.start_date[0:4] }}</td>
+                  <td>{{ item.end_date[8:10] ~ '.' ~ item.end_date[5:7] ~ '.' ~ item.end_date[0:4] }}</td>
+                  <td>{{ item.start_time }}</td>
+                  <td>{{ item.end_time }}</td>
                 </tr>
+              {% endfor %}
+              {% for i in range(7 - data.readiness|length) %}
+                <tr><td></td><td></td><td></td><td></td><td></td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -186,7 +188,7 @@
                 <td>{{ entry.start_time if entry else '' }}</td>
                 <td>{{ entry.end_time if entry else '' }}</td>
                 <td>{{ ('%.2f'|format(entry.hours)).replace('.', ',') if entry else '0,00' }}</td>
-                <td class="note">{{ entry.note if entry else '' }}</td>
+                <td class="note">{{ entry.note_display if entry else '' }}</td>
                 <td>{{ 'x' if entry and entry.compensation == 'Bezahlen' else '' }}</td>
                 <td>{{ 'x' if entry and entry.compensation == 'Freizeit' else '' }}</td>
                 <td>{{ ('%.2f'|format(day.ist)).replace('.', ',') if n == row_count - 1 else '' }}</td>
