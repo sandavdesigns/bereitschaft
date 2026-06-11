@@ -325,13 +325,39 @@ def create_app():
                 except sqlite3.IntegrityError:
                     get_db().rollback()
                     flash("Interner Name existiert bereits.", "error")
-        types = query_all("SELECT * FROM readiness_types ORDER BY name")
+        types = query_all(
+            """
+            SELECT t.*,
+                   (SELECT COUNT(*) FROM readiness r WHERE r.readiness_type_id = t.id) +
+                   (SELECT COUNT(*) FROM work_entries w WHERE w.readiness_type_id = t.id) AS usage_count
+            FROM readiness_types t
+            ORDER BY t.name
+            """
+        )
         return render_template("admin_types.html", user=current_user(), types=types)
 
     @app.post("/admin/types/<int:type_id>/toggle")
     @admin_required
     def toggle_type(type_id):
         execute("UPDATE readiness_types SET active = CASE active WHEN 1 THEN 0 ELSE 1 END WHERE id = ?", (type_id,))
+        return redirect(url_for("admin_types"))
+
+    @app.post("/admin/types/<int:type_id>/delete")
+    @admin_required
+    def delete_type(type_id):
+        usage = query_one(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM readiness WHERE readiness_type_id = ?) +
+                (SELECT COUNT(*) FROM work_entries WHERE readiness_type_id = ?) AS count
+            """,
+            (type_id, type_id),
+        )
+        if usage and usage["count"]:
+            flash("Bereitschaftsart wird bereits verwendet und kann nicht gelöscht werden.", "error")
+        else:
+            execute("DELETE FROM readiness_types WHERE id = ?", (type_id,))
+            flash("Bereitschaftsart gelöscht.", "success")
         return redirect(url_for("admin_types"))
 
     @app.route("/admin/holidays", methods=["GET", "POST"])

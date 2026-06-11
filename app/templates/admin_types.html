@@ -29,6 +29,7 @@
         <th>Sa/So</th>
         <th>Feiertag</th>
         <th>Status</th>
+        <th>Nutzung</th>
         <th></th>
       </tr>
     </thead>
@@ -59,11 +60,17 @@
             <input form="type-{{ type.id }}" type="text" name="holiday_end" value="{{ type.holiday_end }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
           </td>
           <td>{{ "aktiv" if type.active else "inaktiv" }}</td>
+          <td>{{ type.usage_count }}</td>
           <td class="actions">
             <button form="type-{{ type.id }}" class="primary">Speichern</button>
             <form method="post" action="{{ url_for('toggle_type', type_id=type.id) }}">
               <button>{{ "Deaktivieren" if type.active else "Aktivieren" }}</button>
             </form>
+            {% if type.usage_count == 0 %}
+              <form method="post" action="{{ url_for('delete_type', type_id=type.id) }}">
+                <button class="danger">Löschen</button>
+              </form>
+            {% endif %}
           </td>
         </tr>
       {% endfor %}
