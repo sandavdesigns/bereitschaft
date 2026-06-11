@@ -43,6 +43,10 @@ button, .button {
   border-color: var(--primary);
   color: #fff;
 }
+.danger {
+  border-color: #d92d20;
+  color: #b42318;
+}
 
 .shell { max-width: 1180px; margin: 24px auto; padding: 0 18px; }
 .panel {

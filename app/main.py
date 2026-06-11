@@ -98,6 +98,11 @@ def create_app():
     @login_required
     def add_readiness():
         user = current_user()
+        start_date = date_from_month_form("start_day")
+        end_date = date_from_month_form("end_day")
+        if end_date < start_date:
+            flash("Ende darf nicht vor Beginn liegen.", "error")
+            return month_redirect()
         execute(
             """
             INSERT INTO readiness (user_id, readiness_type_id, start_date, end_date, kind, start_time, end_time, hours_per_day)
@@ -106,8 +111,8 @@ def create_app():
             (
                 user["id"],
                 int(request.form["readiness_type_id"]),
-                request.form["start_date"],
-                request.form["end_date"],
+                start_date.isoformat(),
+                end_date.isoformat(),
                 readiness_type_name(int(request.form["readiness_type_id"])),
                 "00:00",
                 "00:00",
@@ -115,18 +120,19 @@ def create_app():
             ),
         )
         flash("Bereitschaft gespeichert.", "success")
-        return redirect(month_redirect_from_form())
+        return month_redirect(start_date.year, start_date.month)
 
     @app.post("/readiness/<int:item_id>/delete")
     @login_required
     def delete_readiness(item_id):
         execute("DELETE FROM readiness WHERE id = ? AND user_id = ?", (item_id, current_user()["id"]))
-        return redirect(request.referrer or url_for("index"))
+        return month_redirect()
 
     @app.route("/work", methods=["POST"])
     @login_required
     def add_work():
         user = current_user()
+        work_date = date_from_month_form("work_day")
         execute(
             """
             INSERT INTO work_entries (user_id, work_date, start_time, end_time, note, compensation)
@@ -134,7 +140,7 @@ def create_app():
             """,
             (
                 user["id"],
-                request.form["work_date"],
+                work_date.isoformat(),
                 request.form["start_time"],
                 request.form["end_time"],
                 request.form.get("note", "").strip(),
@@ -142,13 +148,13 @@ def create_app():
             ),
         )
         flash("Einsatz gespeichert.", "success")
-        return redirect(month_redirect_from_form("work_date"))
+        return month_redirect(work_date.year, work_date.month)
 
     @app.post("/work/<int:item_id>/delete")
     @login_required
     def delete_work(item_id):
         execute("DELETE FROM work_entries WHERE id = ? AND user_id = ?", (item_id, current_user()["id"]))
-        return redirect(request.referrer or url_for("index"))
+        return month_redirect()
 
     @app.get("/pdf/<int:year>/<int:month>")
     @login_required
@@ -472,6 +478,20 @@ def rule_for_day(readiness_type, day):
 def month_redirect_from_form(date_field="start_date"):
     d = parse_date(request.form[date_field])
     return redirect(url_for("index", year=d.year, month=d.month))
+
+
+def month_redirect(year=None, month=None):
+    return redirect(url_for("index", year=year or request.form.get("year"), month=month or request.form.get("month")))
+
+
+def date_from_month_form(day_field):
+    year = int(request.form["year"])
+    month = int(request.form["month"])
+    day = int(request.form[day_field])
+    max_day = calendar.monthrange(year, month)[1]
+    if day < 1 or day > max_day:
+        abort(400)
+    return date(year, month, day)
 
 
 def month_data(user_id, year, month):

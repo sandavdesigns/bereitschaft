@@ -21,8 +21,9 @@
     <h2>Bereitschaft</h2>
     <form method="post" action="{{ url_for('add_readiness') }}" class="form grid-form">
       <input type="hidden" name="year" value="{{ year }}">
-      <label>Beginn <input type="date" name="start_date" required></label>
-      <label>Ende <input type="date" name="end_date" required></label>
+      <input type="hidden" name="month" value="{{ month }}">
+      <label>Von Tag <input type="number" name="start_day" min="1" max="{{ data.days|length }}" value="1" required></label>
+      <label>Bis Tag <input type="number" name="end_day" min="1" max="{{ data.days|length }}" value="{{ data.days|length }}" required></label>
       <label>Art
         <select name="readiness_type_id" required>
           {% for type in types %}
@@ -36,7 +37,9 @@
   <div class="panel">
     <h2>Einsatz / Mehrarbeit</h2>
     <form method="post" action="{{ url_for('add_work') }}" class="form grid-form">
-      <label>Datum <input type="date" name="work_date" required></label>
+      <input type="hidden" name="year" value="{{ year }}">
+      <input type="hidden" name="month" value="{{ month }}">
+      <label>Tag <input type="number" name="work_day" min="1" max="{{ data.days|length }}" required></label>
       <label>Von <input type="time" name="start_time" required></label>
       <label>Bis <input type="time" name="end_time" required></label>
       <label>Bemerkung <input name="note"></label>
@@ -57,11 +60,16 @@
     <div><span>Sa/So</span><strong>{{ "%.2f"|format(data.sum_weekend) }}</strong></div>
   </div>
   <table>
-    <thead><tr><th>Tag</th><th>Soll</th><th>Mehrarbeit</th><th>Ist</th><th>Einsätze</th></tr></thead>
+    <thead><tr><th>Tag</th><th>Art</th><th>Soll</th><th>Mehrarbeit</th><th>Ist</th><th>Einsätze</th></tr></thead>
     <tbody>
       {% for day in data.days %}
         <tr class="{% if day.date.weekday() >= 5 or day.holiday %}weekend{% endif %}">
           <td>{{ day.weekday }} {{ day.date.strftime('%d.%m.') }}</td>
+          <td>
+            {% for item in day.readiness %}
+              <div>{{ item.kind }} {{ item.start_time }}-{{ item.end_time }}</div>
+            {% endfor %}
+          </td>
           <td>{% if day.soll %}{{ "%.2f"|format(day.soll) }}{% endif %}</td>
           <td>{{ "%.2f"|format(day.mehrarbeit) }}</td>
           <td>{{ "%.2f"|format(day.ist) }}</td>
@@ -84,7 +92,13 @@
         {% for item in data.readiness %}
           <tr>
             <td>{{ item.kind }}</td><td>{{ item.start_date }} bis {{ item.end_date }}</td><td>{{ item.start_time }}-{{ item.end_time }}</td>
-            <td><form method="post" action="{{ url_for('delete_readiness', item_id=item.id) }}"><button>Löschen</button></form></td>
+            <td>
+              <form method="post" action="{{ url_for('delete_readiness', item_id=item.id) }}">
+                <input type="hidden" name="year" value="{{ year }}">
+                <input type="hidden" name="month" value="{{ month }}">
+                <button class="danger">Bereitschaft löschen</button>
+              </form>
+            </td>
           </tr>
         {% endfor %}
       </tbody>
@@ -97,7 +111,13 @@
         {% for item in data.work_entries %}
           <tr>
             <td>{{ item.work_date }}</td><td>{{ item.start_time }}-{{ item.end_time }}</td><td>{{ item.note }}</td>
-            <td><form method="post" action="{{ url_for('delete_work', item_id=item.id) }}"><button>Löschen</button></form></td>
+            <td>
+              <form method="post" action="{{ url_for('delete_work', item_id=item.id) }}">
+                <input type="hidden" name="year" value="{{ year }}">
+                <input type="hidden" name="month" value="{{ month }}">
+                <button class="danger">Einsatz löschen</button>
+              </form>
+            </td>
           </tr>
         {% endfor %}
       </tbody>
