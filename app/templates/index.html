@@ -26,7 +26,7 @@
       <label>Art
         <select name="readiness_type_id" required>
           {% for type in types %}
-            <option value="{{ type.id }}" {% if type.id == selected_type_id %}selected{% endif %}>{{ type.name }}</option>
+            <option value="{{ type.id }}" {% if type.id == selected_type_id %}selected{% endif %}>{{ type.display_name or type.name }}</option>
           {% endfor %}
         </select>
       </label>
@@ -43,7 +43,7 @@
         <label>Art
           <select name="readiness_type_id" required>
             {% for type in types %}
-              <option value="{{ type.id }}" {% if type.id == selected_type_id %}selected{% endif %}>{{ type.name }}</option>
+              <option value="{{ type.id }}" {% if type.id == selected_type_id %}selected{% endif %}>{{ type.display_name or type.name }}</option>
             {% endfor %}
           </select>
         </label>

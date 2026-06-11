@@ -3,7 +3,8 @@
 <section class="panel">
   <h1>Bereitschaftsarten</h1>
   <form method="post" class="form type-form">
-    <input name="name" placeholder="Name, z. B. Bereitschaft Gabi/EDV" required>
+    <input name="name" placeholder="Interner Name, eindeutig" required>
+    <input name="display_name" placeholder="Anzeigename, z. B. Bereitschaft" required>
     <label>Mo-Do von <input type="text" name="weekday_start" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
     <label>Mo-Do bis <input type="text" name="weekday_end" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
     <label>Fr von <input type="text" name="friday_start" inputmode="numeric" placeholder="HH:MM" data-time-field></label>
@@ -21,7 +22,8 @@
   <table>
     <thead>
       <tr>
-        <th>Name</th>
+        <th>Interner Name</th>
+        <th>Anzeigename</th>
         <th>Mo-Do</th>
         <th>Fr</th>
         <th>Sa/So</th>
@@ -39,6 +41,7 @@
               <input name="name" value="{{ type.name }}" required>
             </form>
           </td>
+          <td><input form="type-{{ type.id }}" name="display_name" value="{{ type.display_name or type.name }}" required></td>
           <td>
             <input form="type-{{ type.id }}" type="text" name="weekday_start" value="{{ type.weekday_start }}" inputmode="numeric" placeholder="HH:MM" data-time-field>
             <input form="type-{{ type.id }}" type="text" name="weekday_end" value="{{ type.weekday_end }}" inputmode="numeric" placeholder="HH:MM" data-time-field>

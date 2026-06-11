@@ -239,6 +239,7 @@ def create_app():
             type_id = request.form.get("type_id")
             values = (
                 request.form.get("name", "").strip(),
+                request.form.get("display_name", "").strip(),
                 normalize_time_input(request.form.get("weekday_start", "")),
                 normalize_time_input(request.form.get("weekday_end", "")),
                 normalize_time_input(request.form.get("friday_start", "")),
@@ -250,29 +251,36 @@ def create_app():
             )
             if not values[0]:
                 flash("Name ist Pflicht.", "error")
-            elif not all(valid_time_value(value, allow_empty=True) for value in values[1:]):
+            elif not values[1]:
+                flash("Anzeigename ist Pflicht.", "error")
+            elif not all(valid_time_value(value, allow_empty=True) for value in values[2:]):
                 flash("Bitte Zeiten im Format HH:MM eingeben.", "error")
-            elif type_id:
-                execute(
-                    """
-                    UPDATE readiness_types
-                    SET name = ?, weekday_start = ?, weekday_end = ?, friday_start = ?, friday_end = ?,
-                        weekend_start = ?, weekend_end = ?, holiday_start = ?, holiday_end = ?
-                    WHERE id = ?
-                    """,
-                    (*values, int(type_id)),
-                )
-                flash("Bereitschaftsart gespeichert.", "success")
             else:
-                execute(
-                    """
-                    INSERT INTO readiness_types
-                    (name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    values,
-                )
-                flash("Bereitschaftsart angelegt.", "success")
+                try:
+                    if type_id:
+                        execute(
+                            """
+                            UPDATE readiness_types
+                            SET name = ?, display_name = ?, weekday_start = ?, weekday_end = ?, friday_start = ?, friday_end = ?,
+                                weekend_start = ?, weekend_end = ?, holiday_start = ?, holiday_end = ?
+                            WHERE id = ?
+                            """,
+                            (*values, int(type_id)),
+                        )
+                        flash("Bereitschaftsart gespeichert.", "success")
+                    else:
+                        execute(
+                            """
+                            INSERT INTO readiness_types
+                            (name, display_name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            values,
+                        )
+                        flash("Bereitschaftsart angelegt.", "success")
+                except sqlite3.IntegrityError:
+                    get_db().rollback()
+                    flash("Interner Name existiert bereits.", "error")
         types = query_all("SELECT * FROM readiness_types ORDER BY name")
         return render_template("admin_types.html", user=current_user(), types=types)
 
@@ -378,6 +386,7 @@ def init_db(app):
                 CREATE TABLE IF NOT EXISTS readiness_types (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE,
+                    display_name TEXT NOT NULL DEFAULT '',
                     weekday_start TEXT NOT NULL DEFAULT '',
                     weekday_end TEXT NOT NULL DEFAULT '',
                     friday_start TEXT NOT NULL DEFAULT '',
@@ -398,6 +407,8 @@ def init_db(app):
             )
             ensure_column(db, "readiness", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             ensure_column(db, "work_entries", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
+            ensure_column(db, "readiness_types", "display_name", "TEXT NOT NULL DEFAULT ''")
+            db.execute("UPDATE readiness_types SET display_name = name WHERE display_name = ''")
             seed_default_type(db)
             seed_thuringia_holiday_range(db, datetime.now().year - 1, datetime.now().year + 5)
             admin = db.execute("SELECT id FROM users WHERE username = 'admin'").fetchone()
@@ -424,8 +435,8 @@ def seed_default_type(db):
         db.execute(
             """
             INSERT INTO readiness_types
-            (name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
-            VALUES ('Bereitschaft', '12:15', '18:00', '12:15', '18:00', '06:00', '18:00', '06:00', '18:00')
+            (name, display_name, weekday_start, weekday_end, friday_start, friday_end, weekend_start, weekend_end, holiday_start, holiday_end)
+            VALUES ('Bereitschaft', 'Bereitschaft', '12:15', '18:00', '12:15', '18:00', '06:00', '18:00', '06:00', '18:00')
             """
         )
     default_type = db.execute("SELECT id FROM readiness_types ORDER BY id LIMIT 1").fetchone()
@@ -489,8 +500,10 @@ def execute(sql, params=()):
 
 
 def readiness_type_name(type_id):
-    row = query_one("SELECT name FROM readiness_types WHERE id = ?", (type_id,))
-    return row["name"] if row else "Bereitschaft"
+    row = query_one("SELECT display_name, name FROM readiness_types WHERE id = ?", (type_id,))
+    if not row:
+        return "Bereitschaft"
+    return row["display_name"] or row["name"]
 
 
 def selected_readiness_type_id(types):
@@ -647,7 +660,7 @@ def work_remark(day_readiness, note):
 
 
 def readiness_kind(item):
-    return item["type_name"] or item["kind"]
+    return item["type_display_name"] or item["type_name"] or item["kind"]
 
 
 def month_redirect_from_form(date_field="start_date"):
@@ -677,7 +690,8 @@ def readiness_rules_for_day(user_id, day):
     holiday_dates = holiday_dates_for_year(day.year)
     rows = query_all(
         """
-        SELECT r.*, t.name AS type_name, t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
+        SELECT r.*, t.name AS type_name, t.display_name AS type_display_name,
+               t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
                t.weekend_start, t.weekend_end, t.holiday_start, t.holiday_end
         FROM readiness r
         LEFT JOIN readiness_types t ON t.id = r.readiness_type_id
@@ -743,7 +757,8 @@ def month_data(user_id, year, month):
     holiday_dates = holiday_dates_for_year(year)
     readiness = query_all(
         """
-        SELECT r.*, t.name AS type_name, t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
+        SELECT r.*, t.name AS type_name, t.display_name AS type_display_name,
+               t.weekday_start, t.weekday_end, t.friday_start, t.friday_end,
                t.weekend_start, t.weekend_end, t.holiday_start, t.holiday_end
         FROM readiness r
         LEFT JOIN readiness_types t ON t.id = r.readiness_type_id
@@ -754,7 +769,7 @@ def month_data(user_id, year, month):
     )
     work_entries = query_all(
         """
-        SELECT w.*, t.name AS type_name
+        SELECT w.*, t.name AS type_name, t.display_name AS type_display_name
         FROM work_entries w
         LEFT JOIN readiness_types t ON t.id = w.readiness_type_id
         WHERE w.user_id = ? AND w.work_date BETWEEN ? AND ?
@@ -773,7 +788,7 @@ def month_data(user_id, year, month):
                 readiness_display.append(
                     {
                         "id": item["id"],
-                        "kind": item["type_name"] or item["kind"],
+                        "kind": item["type_display_name"] or item["type_name"] or item["kind"],
                         "start_date": current.isoformat(),
                         "end_date": current.isoformat(),
                         "start_time": rule["start_time"],
@@ -811,7 +826,7 @@ def month_data(user_id, year, month):
                         "start_time": w["start_time"],
                         "end_time": w["end_time"],
                         "note": w["note"],
-                        "remark": work_remark([{"kind": w["type_name"]}] if w["type_name"] else remark_readiness, w["note"]),
+                        "remark": work_remark([{"kind": w["type_display_name"] or w["type_name"]}] if (w["type_display_name"] or w["type_name"]) else remark_readiness, w["note"]),
                         "compensation": w["compensation"],
                         "hours": decimal_hours(w["start_time"], w["end_time"]),
                     }
