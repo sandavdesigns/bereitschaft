@@ -616,15 +616,22 @@ def is_holiday(day, holiday_dates=None):
 def rule_for_day(readiness_type, day, holiday_dates=None):
     if is_holiday(day, holiday_dates):
         start, end = readiness_type["holiday_start"], readiness_type["holiday_end"]
+        if start and end and day.weekday() == 4:
+            start, end, hours = first_half_interval(start, end)
+        else:
+            hours = None
     elif day.weekday() == 4:
         start, end = readiness_type["friday_start"], readiness_type["friday_end"]
+        hours = None
     elif day.weekday() >= 5:
         start, end = readiness_type["weekend_start"], readiness_type["weekend_end"]
+        hours = None
     else:
         start, end = readiness_type["weekday_start"], readiness_type["weekday_end"]
+        hours = None
     if not start or not end:
         return None
-    return {"start_time": start, "end_time": end, "hours": decimal_hours(start, end)}
+    return {"start_time": start, "end_time": end, "hours": hours if hours is not None else interval_hours(start, end)}
 
 
 def work_remark(day_readiness, note):
@@ -698,6 +705,22 @@ def normalized_interval(start_value, end_value):
     if end <= start:
         end += 24 * 60
     return start, end
+
+
+def minutes_to_time(value):
+    value = value % (24 * 60)
+    return f"{value // 60:02d}:{value % 60:02d}"
+
+
+def interval_hours(start_value, end_value):
+    start, end = normalized_interval(start_value, end_value)
+    return round((end - start) / 60, 2)
+
+
+def first_half_interval(start_value, end_value):
+    start, end = normalized_interval(start_value, end_value)
+    middle = start + int((end - start) / 2)
+    return start_value, minutes_to_time(middle), round((middle - start) / 60, 2)
 
 
 def work_fits_readiness(user_id, day, start_time, end_time):
