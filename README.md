@@ -24,7 +24,11 @@ Als Stack kann diese `docker-compose.yml` verwendet werden. Sinnvolle Variablen:
 ```env
 SECRET_KEY=bitte-aendern
 ADMIN_PASSWORD=bitte-aendern
+HOST_PORT=8080
+APP_PORT=8080
 ```
 
 Die SQLite-Datenbank liegt im Volume `bereitschaft_data`.
 
+Die Compose-Datei zieht standardmäßig das fertige Image `ghcr.io/sandavdesigns/bereitschaft:latest`.
+Portainer muss dadurch kein Image bauen.

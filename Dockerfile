@@ -13,6 +13,7 @@ COPY app ./app
 RUN mkdir -p /data
 
 ENV DATABASE_PATH=/data/bereitschaft.sqlite
+ENV APP_PORT=8080
 EXPOSE 8080
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "app:create_app()"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${APP_PORT} --workers ${GUNICORN_WORKERS:-2} 'app:create_app()'"]
