@@ -1044,6 +1044,8 @@ def month_data(user_id, year, month):
             }
         )
 
+    sum_weekday = round(sum(d["ist"] for d in days if d["date"].weekday() < 5 and not d["holiday"]), 2)
+    sum_weekend = round(sum(d["ist"] for d in days if d["date"].weekday() >= 5 or d["holiday"]), 2)
     readiness_split = len(readiness_display) if len(readiness_display) <= 8 else (len(readiness_display) + 1) // 2
     return {
         "readiness": readiness_display,
@@ -1052,11 +1054,12 @@ def month_data(user_id, year, month):
         "work_entries": month_work_entries,
         "days": days,
         "sum_soll": round(sum(d["soll"] for d in days), 2),
+        "sum_readiness": round(sum_weekday + sum_weekend, 2),
         "sum_work": round(sum(d["mehrarbeit"] for d in days), 2),
         "sum_work_paid": round(sum(w["hours"] for w in month_work_entries if w["compensation"] == "Bezahlen"), 2),
         "sum_work_leisure": round(sum(w["hours"] for w in month_work_entries if w["compensation"] == "Freizeit"), 2),
-        "sum_weekday": round(sum(d["ist"] for d in days if d["date"].weekday() < 5 and not d["holiday"]), 2),
-        "sum_weekend": round(sum(d["ist"] for d in days if d["date"].weekday() >= 5 or d["holiday"]), 2),
+        "sum_weekday": sum_weekday,
+        "sum_weekend": sum_weekend,
     }
 
 

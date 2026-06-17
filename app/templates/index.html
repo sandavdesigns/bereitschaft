@@ -71,15 +71,18 @@
 <section class="panel">
   <h2>{{ months[month-1] }} {{ year }}</h2>
   <div class="kpis">
-    <div><span>Soll</span><strong>{{ "%.2f"|format(data.sum_soll) }}</strong></div>
+    <div class="kpi-combined">
+      <span>Bereitschaft gesamt</span>
+      <strong>{{ "%.2f"|format(data.sum_readiness) }}</strong>
+      <small>davon Mo-Fr {{ "%.2f"|format(data.sum_weekday) }}</small>
+      <small>davon Sa/So/Feiertag {{ "%.2f"|format(data.sum_weekend) }}</small>
+    </div>
     <div class="kpi-combined">
       <span>Mehrarbeit gesamt</span>
       <strong>{{ "%.2f"|format(data.sum_work) }}</strong>
       <small>davon bezahlt {{ "%.2f"|format(data.sum_work_paid) }}</small>
       <small>davon Freizeit {{ "%.2f"|format(data.sum_work_leisure) }}</small>
     </div>
-    <div><span>Mo-Fr</span><strong>{{ "%.2f"|format(data.sum_weekday) }}</strong></div>
-    <div><span>Sa/So/Feiertag</span><strong>{{ "%.2f"|format(data.sum_weekend) }}</strong></div>
   </div>
   <table class="form-preview-table">
     <thead>
