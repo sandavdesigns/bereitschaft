@@ -1193,11 +1193,9 @@ def render_month_pdf(buffer, user, data, year, month):
         pay_marker = ""
         leisure_marker = ""
         if entry and entry["compensation"] == "Bezahlen":
-            pay_marker = "x Feiertag" if day["force_pay_holiday"] else "x"
+            pay_marker = "x"
         if entry and entry["compensation"] == "Freizeit":
             leisure_marker = "x"
-        elif entry and day["force_pay_holiday"]:
-            leisure_marker = "gesperrt"
         x = grid_x
         vals = [
             day["weekday"] if first_row else "",
