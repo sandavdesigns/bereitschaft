@@ -123,6 +123,7 @@ th { color: var(--muted); font-weight: 600; }
 .kpis div { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fafafa; }
 .kpis span { display: block; color: var(--muted); font-size: 13px; }
 .kpis strong { font-size: 22px; }
+.kpi-combined small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
 .inline-type-form { margin: 0; }
 .inline-reset-form { display: grid; grid-template-columns: minmax(170px, 1fr) auto; gap: 8px; margin: 0; align-items: center; }
 .actions { display: flex; gap: 8px; align-items: center; }

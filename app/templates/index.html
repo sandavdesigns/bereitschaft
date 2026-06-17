@@ -72,9 +72,12 @@
   <h2>{{ months[month-1] }} {{ year }}</h2>
   <div class="kpis">
     <div><span>Soll</span><strong>{{ "%.2f"|format(data.sum_soll) }}</strong></div>
-    <div><span>Mehrarbeit</span><strong>{{ "%.2f"|format(data.sum_work) }}</strong></div>
-    <div><span>Mehrarbeit bezahlt</span><strong>{{ "%.2f"|format(data.sum_work_paid) }}</strong></div>
-    <div><span>Mehrarbeit Freizeit</span><strong>{{ "%.2f"|format(data.sum_work_leisure) }}</strong></div>
+    <div class="kpi-combined">
+      <span>Mehrarbeit gesamt</span>
+      <strong>{{ "%.2f"|format(data.sum_work) }}</strong>
+      <small>davon bezahlt {{ "%.2f"|format(data.sum_work_paid) }}</small>
+      <small>davon Freizeit {{ "%.2f"|format(data.sum_work_leisure) }}</small>
+    </div>
     <div><span>Mo-Fr</span><strong>{{ "%.2f"|format(data.sum_weekday) }}</strong></div>
     <div><span>Sa/So/Feiertag</span><strong>{{ "%.2f"|format(data.sum_weekend) }}</strong></div>
   </div>
