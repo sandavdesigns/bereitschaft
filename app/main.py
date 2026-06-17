@@ -1084,8 +1084,14 @@ def fitted_text(c, text, max_width, size=8, bold=False):
     return text + suffix if text else ""
 
 
-def draw_fitted_text(c, x, y, text, max_width, size=8, bold=False, align="left"):
-    draw_text(c, x, y, fitted_text(c, text, max_width, size, bold), size, bold, align)
+def draw_fitted_text(c, x, y, text, max_width, size=8, bold=False, align="left", min_size=None):
+    text = str(text or "")
+    draw_size = size
+    if min_size is not None:
+        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        while draw_size > min_size and c.stringWidth(text, font_name, draw_size) > max_width:
+            draw_size = max(min_size, draw_size - 0.2)
+    draw_text(c, x, y, fitted_text(c, text, max_width, draw_size, bold), draw_size, bold, align)
 
 
 def centered_text_baseline(y, height, size, bold=False):
@@ -1144,7 +1150,7 @@ def render_month_pdf(buffer, user, data, year, month):
         for i, header in enumerate(headers):
             x = current_x + sum(cols[:i]) * mm
             c.rect(x, table_y - top_row_h, cols[i] * mm, top_row_h)
-            draw_fitted_text(c, x + cols[i] * mm / 2, table_y - (2.65 if compact_top else 3.5) * mm, header, cols[i] * mm - 1 * mm, 5.1 if compact_top else 6.1, True, "center")
+            draw_fitted_text(c, x + cols[i] * mm / 2, table_y - (2.7 if compact_top else 3.45) * mm, header, cols[i] * mm - 1 * mm, 5.7 if compact_top else 6.6, True, "center")
         for row_idx in range(top_rows):
             y = table_y - (row_idx + 2) * top_row_h
             item = column[row_idx] if row_idx < len(column) else None
@@ -1160,7 +1166,7 @@ def render_month_pdf(buffer, user, data, year, month):
             for i, val in enumerate(values):
                 x = current_x + sum(cols[:i]) * mm
                 c.rect(x, y, cols[i] * mm, top_row_h)
-                draw_fitted_text(c, x + 0.7 * mm, y + (1.25 if compact_top else 1.7) * mm, val, cols[i] * mm - 1.4 * mm, 5.0 if compact_top else 5.8)
+                draw_fitted_text(c, x + 0.7 * mm, y + (1.05 if compact_top else 1.35) * mm, val, cols[i] * mm - 1.4 * mm, 5.8 if compact_top else 6.6)
 
     grid_x = left
     headers = ["Tag", "", "Soll-Ruf-\nbereit-\nschaft", "von", "bis", "Std.", "Bemerkung", "Bezahlen\nx", "Freizeit\nx", "Ist-Rufbereit-\nschaft", "Erschwernis-\nzuschlag\nStd."]
@@ -1170,7 +1176,7 @@ def render_month_pdf(buffer, user, data, year, month):
     for idx, header in enumerate(headers):
         c.rect(x, grid_y, col_widths[idx] * mm, header_h)
         for line_no, line in enumerate(header.split("\n")):
-            draw_fitted_text(c, x + col_widths[idx] * mm / 2, grid_y + header_h - (line_no + 1) * 3.1 * mm, line, col_widths[idx] * mm - 1 * mm, 5.2, True, "center")
+            draw_fitted_text(c, x + col_widths[idx] * mm / 2, grid_y + header_h - (line_no + 1) * 3.15 * mm, line, col_widths[idx] * mm - 1 * mm, 5.8, True, "center")
         x += col_widths[idx] * mm
 
     detail_rows = []
@@ -1181,7 +1187,7 @@ def render_month_pdf(buffer, user, data, year, month):
             detail_rows.append((day, extra, False, len(entries)))
     detail_rows = detail_rows[:36]
     detail_row_h = min(5.2 * mm, max(3.4 * mm, (grid_y - 58 * mm) / max(len(detail_rows), 1)))
-    detail_font_size = 5.8 if detail_row_h >= 4.4 * mm else 5.4
+    detail_font_size = 6.8 if detail_row_h >= 4.4 * mm else 6.2
     y = grid_y - detail_row_h
     red = colors.Color(0.82, 0.42, 0.42, alpha=0.65)
     for day, entry, first_row, entry_count in detail_rows:
@@ -1212,7 +1218,7 @@ def render_month_pdf(buffer, user, data, year, month):
         ]
         for idx, val in enumerate(vals):
             c.rect(x, y, col_widths[idx] * mm, detail_row_h)
-            draw_fitted_text(c, x + col_widths[idx] * mm / 2, centered_text_baseline(y, detail_row_h, detail_font_size), val, col_widths[idx] * mm - 1 * mm, detail_font_size, False, "center")
+            draw_fitted_text(c, x + col_widths[idx] * mm / 2, centered_text_baseline(y, detail_row_h, detail_font_size), val, col_widths[idx] * mm - 1 * mm, detail_font_size, False, "center", 5.8)
             x += col_widths[idx] * mm
         y -= detail_row_h
 
