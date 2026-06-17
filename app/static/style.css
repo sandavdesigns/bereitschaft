@@ -122,6 +122,7 @@ th { color: var(--muted); font-weight: 600; }
 .kpis span { display: block; color: var(--muted); font-size: 13px; }
 .kpis strong { font-size: 22px; }
 .inline-type-form { margin: 0; }
+.inline-reset-form { display: grid; grid-template-columns: minmax(170px, 1fr) auto; gap: 8px; margin: 0; align-items: center; }
 .actions { display: flex; gap: 8px; align-items: center; }
 .actions form { margin: 0; }
 .messages { margin-bottom: 16px; }

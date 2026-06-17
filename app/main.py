@@ -78,6 +78,8 @@ def create_app():
             user = query_one("SELECT * FROM users WHERE username = ?", (username,))
             if user and check_password_hash(user["password_hash"], password):
                 session["user_id"] = user["id"]
+                if user["must_change_password"]:
+                    return redirect(url_for("force_password_change"))
                 return redirect(url_for("index"))
             flash("Login fehlgeschlagen.", "error")
         return render_template("login.html")
@@ -120,11 +122,33 @@ def create_app():
             flash("Die neuen Passwörter stimmen nicht überein.", "error")
         else:
             execute(
-                "UPDATE users SET password_hash = ? WHERE id = ?",
+                "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
                 (generate_password_hash(new_password), user["id"]),
             )
             flash("Passwort geändert.", "success")
         return redirect(url_for("profile"))
+
+    @app.route("/password/change-required", methods=["GET", "POST"])
+    @login_required
+    def force_password_change():
+        user = current_user()
+        if not user["must_change_password"]:
+            return redirect(url_for("index"))
+        if request.method == "POST":
+            new_password = request.form.get("new_password", "")
+            confirm_password = request.form.get("confirm_password", "")
+            if len(new_password) < 8:
+                flash("Das neue Passwort muss mindestens 8 Zeichen lang sein.", "error")
+            elif new_password != confirm_password:
+                flash("Die neuen Passwörter stimmen nicht überein.", "error")
+            else:
+                execute(
+                    "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
+                    (generate_password_hash(new_password), user["id"]),
+                )
+                flash("Passwort geändert.", "success")
+                return redirect(url_for("index"))
+        return render_template("force_password_change.html", user=user)
 
     @app.route("/readiness", methods=["POST"])
     @login_required
@@ -273,8 +297,22 @@ def create_app():
                     flash("Benutzer angelegt.", "success")
                 except sqlite3.IntegrityError:
                     flash("Benutzername existiert bereits.", "error")
-        users = query_all("SELECT id, username, role, personnel_no, first_name, last_name FROM users ORDER BY username")
+        users = query_all("SELECT id, username, role, personnel_no, first_name, last_name, must_change_password FROM users ORDER BY username")
         return render_template("admin_users.html", user=current_user(), users=users)
+
+    @app.post("/admin/users/<int:user_id>/reset-password")
+    @admin_required
+    def reset_user_password(user_id):
+        password = request.form.get("password", "")
+        if len(password) < 8:
+            flash("Das temporäre Passwort muss mindestens 8 Zeichen lang sein.", "error")
+        else:
+            execute(
+                "UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
+                (generate_password_hash(password), user_id),
+            )
+            flash("Passwort zurückgesetzt. Der Benutzer muss es beim nächsten Login ändern.", "success")
+        return redirect(url_for("admin_users"))
 
     @app.route("/admin/types", methods=["GET", "POST"])
     @admin_required
@@ -427,7 +465,8 @@ def init_db(app):
                     role TEXT NOT NULL DEFAULT 'user',
                     personnel_no TEXT DEFAULT '',
                     first_name TEXT DEFAULT '',
-                    last_name TEXT DEFAULT ''
+                    last_name TEXT DEFAULT '',
+                    must_change_password INTEGER NOT NULL DEFAULT 0
                 );
 
                 CREATE TABLE IF NOT EXISTS readiness (
@@ -479,6 +518,7 @@ def init_db(app):
             ensure_column(db, "readiness", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             ensure_column(db, "readiness", "friday_holiday_segment", "TEXT NOT NULL DEFAULT 'first'")
             ensure_column(db, "work_entries", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
+            ensure_column(db, "users", "must_change_password", "INTEGER NOT NULL DEFAULT 0")
             ensure_column(db, "readiness_types", "display_name", "TEXT NOT NULL DEFAULT ''")
             db.execute("UPDATE readiness_types SET display_name = name WHERE display_name = ''")
             if "friday_holiday_segment" in table_columns(db, "readiness_types"):
@@ -644,8 +684,11 @@ def current_user():
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if current_user() is None:
+        user = current_user()
+        if user is None:
             return redirect(url_for("login"))
+        if user["must_change_password"] and request.endpoint not in ("force_password_change", "logout", "static"):
+            return redirect(url_for("force_password_change"))
         return view(*args, **kwargs)
 
     return wrapped
