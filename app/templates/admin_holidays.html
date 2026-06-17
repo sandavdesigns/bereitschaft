@@ -18,11 +18,12 @@
     <input type="hidden" name="action" value="save">
     <label>Datum <input type="date" name="holiday_date" required></label>
     <label>Name <input name="name" placeholder="Feiertag" required></label>
+    <label class="checkbox-label"><input type="checkbox" name="force_pay" value="1"> Nur Bezahlen</label>
     <button class="primary">Anlegen</button>
   </form>
   <table>
     <thead>
-      <tr><th>Datum</th><th>Name</th><th></th></tr>
+      <tr><th>Datum</th><th>Name</th><th>Nur Bezahlen</th><th></th></tr>
     </thead>
     <tbody>
       {% for holiday in holidays %}
@@ -35,6 +36,7 @@
             </form>
           </td>
           <td><input form="holiday-{{ holiday.id }}" name="name" value="{{ holiday.name }}" required></td>
+          <td><label class="table-check"><input form="holiday-{{ holiday.id }}" type="checkbox" name="force_pay" value="1" {% if holiday.force_pay %}checked{% endif %}> ja</label></td>
           <td class="actions">
             <button form="holiday-{{ holiday.id }}" class="primary">Speichern</button>
             <form method="post" action="{{ url_for('delete_holiday', holiday_id=holiday.id) }}">

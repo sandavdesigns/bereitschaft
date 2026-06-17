@@ -44,13 +44,13 @@
       event.target.querySelectorAll('[data-time-field]').forEach(normalizeTimeField);
     });
 
-    document.querySelectorAll('form[data-holiday-days]').forEach(function (form) {
+    document.querySelectorAll('form[data-force-pay-days]').forEach(function (form) {
       var dayField = form.querySelector('[data-work-day]');
       var compensation = form.querySelector('[data-compensation]');
       var hint = form.querySelector('[data-holiday-compensation-hint]');
       if (!dayField || !compensation) return;
 
-      var holidayDays = (form.getAttribute('data-holiday-days') || '')
+      var forcePayDays = (form.getAttribute('data-force-pay-days') || '')
         .split(',')
         .filter(Boolean)
         .map(Number);
@@ -59,10 +59,10 @@
       });
 
       function updateCompensation() {
-        var isHoliday = holidayDays.indexOf(Number(dayField.value)) !== -1;
-        if (isHoliday) compensation.value = 'Bezahlen';
-        if (leisureOption) leisureOption.disabled = isHoliday;
-        if (hint) hint.hidden = !isHoliday;
+        var isForcePayDay = forcePayDays.indexOf(Number(dayField.value)) !== -1;
+        if (isForcePayDay) compensation.value = 'Bezahlen';
+        if (leisureOption) leisureOption.disabled = isForcePayDay;
+        if (hint) hint.hidden = !isForcePayDay;
       }
 
       dayField.addEventListener('input', updateCompensation);

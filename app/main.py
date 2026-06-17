@@ -229,7 +229,7 @@ def create_app():
             flash("Einsatzzeiten müssen innerhalb der Bereitschaftszeit liegen.", "error")
             return month_redirect(work_date.year, work_date.month)
         compensation = request.form.get("compensation", "Freizeit")
-        if is_holiday(work_date):
+        if is_force_pay_holiday(work_date):
             compensation = "Bezahlen"
         execute(
             """
@@ -417,15 +417,22 @@ def create_app():
             holiday_id = request.form.get("holiday_id")
             holiday_date = request.form.get("holiday_date")
             name = request.form.get("name", "").strip()
+            force_pay = 1 if request.form.get("force_pay") == "1" else 0
             if not holiday_date or not name:
                 flash("Datum und Name sind Pflicht.", "error")
             elif holiday_id:
-                execute("UPDATE holidays SET holiday_date = ?, name = ? WHERE id = ?", (holiday_date, name, int(holiday_id)))
+                execute(
+                    "UPDATE holidays SET holiday_date = ?, name = ?, force_pay = ? WHERE id = ?",
+                    (holiday_date, name, force_pay, int(holiday_id)),
+                )
                 flash("Feiertag gespeichert.", "success")
                 year = parse_date(holiday_date).year
             else:
                 try:
-                    execute("INSERT INTO holidays (holiday_date, name) VALUES (?, ?)", (holiday_date, name))
+                    execute(
+                        "INSERT INTO holidays (holiday_date, name, force_pay) VALUES (?, ?, ?)",
+                        (holiday_date, name, force_pay),
+                    )
                     flash("Feiertag angelegt.", "success")
                     year = parse_date(holiday_date).year
                 except sqlite3.IntegrityError:
@@ -516,7 +523,8 @@ def init_db(app):
                 CREATE TABLE IF NOT EXISTS holidays (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     holiday_date TEXT NOT NULL UNIQUE,
-                    name TEXT NOT NULL
+                    name TEXT NOT NULL,
+                    force_pay INTEGER NOT NULL DEFAULT 0
                 );
                 """
             )
@@ -525,6 +533,10 @@ def init_db(app):
             ensure_column(db, "work_entries", "readiness_type_id", "INTEGER REFERENCES readiness_types(id)")
             ensure_column(db, "users", "must_change_password", "INTEGER NOT NULL DEFAULT 0")
             ensure_column(db, "readiness_types", "display_name", "TEXT NOT NULL DEFAULT ''")
+            added_force_pay = ensure_column(db, "holidays", "force_pay", "INTEGER NOT NULL DEFAULT 0")
+            if added_force_pay:
+                for holiday_name in FORCE_PAY_HOLIDAY_NAMES:
+                    db.execute("UPDATE holidays SET force_pay = 1 WHERE name = ?", (holiday_name,))
             db.execute("UPDATE readiness_types SET display_name = name WHERE display_name = ''")
             if "friday_holiday_segment" in table_columns(db, "readiness_types"):
                 db.execute(
@@ -562,6 +574,8 @@ def table_columns(db, table):
 def ensure_column(db, table, column, definition):
     if column not in table_columns(db, table):
         db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+        return True
+    return False
 
 
 def seed_default_type(db):
@@ -596,6 +610,23 @@ def thuringia_holidays(year):
     ]
 
 
+FORCE_PAY_HOLIDAY_NAMES = {
+    "Neujahr",
+    "Karfreitag",
+    "Ostermontag",
+    "Tag der Arbeit",
+    "Christi Himmelfahrt",
+    "Pfingstmontag",
+    "Weltkindertag",
+    "Tag der Deutschen Einheit",
+    "Reformationstag",
+    "1. Weihnachtsfeiertag",
+    "2. Weihnachtsfeiertag",
+    "1. Weihnachtstag",
+    "2. Weihnachtstag",
+}
+
+
 def seed_thuringia_holiday_range(db, start_year, end_year, replace=False):
     for year in range(start_year, end_year + 1):
         seed_thuringia_holidays(db, year, replace=replace)
@@ -609,8 +640,8 @@ def seed_thuringia_holidays(db, year, replace=False):
         )
     for holiday_date, name in thuringia_holidays(year):
         db.execute(
-            "INSERT OR IGNORE INTO holidays (holiday_date, name) VALUES (?, ?)",
-            (holiday_date.isoformat(), name),
+            "INSERT OR IGNORE INTO holidays (holiday_date, name, force_pay) VALUES (?, ?, ?)",
+            (holiday_date.isoformat(), name, 1 if name in FORCE_PAY_HOLIDAY_NAMES else 0),
         )
 
 
@@ -758,10 +789,25 @@ def holiday_dates_for_year(year):
     return {parse_date(row["holiday_date"]) for row in rows}
 
 
+def force_pay_holiday_dates_for_year(year):
+    ensure_thuringia_holidays_for_year(year)
+    rows = query_all(
+        "SELECT holiday_date FROM holidays WHERE holiday_date BETWEEN ? AND ? AND force_pay = 1",
+        (date(year, 1, 1).isoformat(), date(year, 12, 31).isoformat()),
+    )
+    return {parse_date(row["holiday_date"]) for row in rows}
+
+
 def is_holiday(day, holiday_dates=None):
     if holiday_dates is None:
         holiday_dates = holiday_dates_for_year(day.year)
     return day in holiday_dates
+
+
+def is_force_pay_holiday(day, force_pay_holiday_dates=None):
+    if force_pay_holiday_dates is None:
+        force_pay_holiday_dates = force_pay_holiday_dates_for_year(day.year)
+    return day in force_pay_holiday_dates
 
 
 def rule_for_day(readiness_type, day, holiday_dates=None):
@@ -901,6 +947,7 @@ def month_data(user_id, year, month):
     first = date(year, month, 1)
     last = date(year, month, calendar.monthrange(year, month)[1])
     holiday_dates = holiday_dates_for_year(year)
+    force_pay_holiday_dates = force_pay_holiday_dates_for_year(year)
     readiness = query_all(
         """
         SELECT r.*, t.name AS type_name, t.display_name AS type_display_name,
@@ -987,6 +1034,7 @@ def month_data(user_id, year, month):
                 "date": current,
                 "weekday": WEEKDAYS[current.weekday()],
                 "holiday": is_holiday(current, holiday_dates),
+                "force_pay_holiday": is_force_pay_holiday(current, force_pay_holiday_dates),
                 "remark": work_remark(remark_readiness, ""),
                 "readiness": day_readiness,
                 "entries": entries,
@@ -1137,6 +1185,14 @@ def render_month_pdf(buffer, user, data, year, month):
             c.setFillColor(red)
             c.rect(grid_x, y, sum(col_widths) * mm, detail_row_h, stroke=0, fill=1)
             c.setFillColor(colors.black)
+        pay_marker = ""
+        leisure_marker = ""
+        if entry and entry["compensation"] == "Bezahlen":
+            pay_marker = "x Feiertag" if day["force_pay_holiday"] else "x"
+        if entry and entry["compensation"] == "Freizeit":
+            leisure_marker = "x"
+        elif entry and day["force_pay_holiday"]:
+            leisure_marker = "gesperrt"
         x = grid_x
         vals = [
             day["weekday"] if first_row else "",
@@ -1146,8 +1202,8 @@ def render_month_pdf(buffer, user, data, year, month):
             entry["end_time"] if entry else "",
             fmt_hours(decimal_hours(entry["start_time"], entry["end_time"])) if entry else "0,00",
             entry["remark"] if entry else day["remark"],
-            "x" if entry and entry["compensation"] == "Bezahlen" else "",
-            "x" if entry and entry["compensation"] == "Freizeit" else "",
+            pay_marker,
+            leisure_marker,
             fmt_hours(day["ist"]) if (not entry or entry == day["entries"][-1]) else "",
             "0,00" if first_row else "",
         ]

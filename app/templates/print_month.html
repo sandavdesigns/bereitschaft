@@ -214,8 +214,8 @@
                 <td>{{ entry.end_time if entry else '' }}</td>
                 <td>{{ ('%.2f'|format(entry.hours)).replace('.', ',') if entry else '0,00' }}</td>
                 <td class="note">{{ entry.remark if entry else day.remark }}</td>
-                <td>{% if entry and entry.compensation == 'Bezahlen' %}x{% if day.holiday %} Feiertag{% endif %}{% endif %}</td>
-                <td>{% if entry and entry.compensation == 'Freizeit' %}x{% elif entry and day.holiday %}gesperrt{% endif %}</td>
+                <td>{% if entry and entry.compensation == 'Bezahlen' %}x{% if day.force_pay_holiday %} Feiertag{% endif %}{% endif %}</td>
+                <td>{% if entry and entry.compensation == 'Freizeit' %}x{% elif entry and day.force_pay_holiday %}gesperrt{% endif %}</td>
                 <td>{{ ('%.2f'|format(day.ist)).replace('.', ',') if n == row_count - 1 else '' }}</td>
                 <td>{{ '0,00' if n == 0 else '' }}</td>
               </tr>

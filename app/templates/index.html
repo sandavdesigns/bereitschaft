@@ -42,7 +42,7 @@
   <div class="panel">
     <h2>Einsatz / Mehrarbeit</h2>
     {% if data.has_readiness %}
-      <form method="post" action="{{ url_for('add_work') }}" class="form grid-form work-form" data-holiday-days="{% for day in data.days if day.holiday %}{{ day.date.day }}{% if not loop.last %},{% endif %}{% endfor %}">
+      <form method="post" action="{{ url_for('add_work') }}" class="form grid-form work-form" data-force-pay-days="{% for day in data.days if day.force_pay_holiday %}{{ day.date.day }}{% if not loop.last %},{% endif %}{% endfor %}">
         <input type="hidden" name="year" value="{{ year }}">
         <input type="hidden" name="month" value="{{ month }}">
         <label>Tag <input type="number" name="work_day" min="1" max="{{ data.days|length }}" data-work-day required></label>
@@ -106,8 +106,8 @@
             <td>{{ entry.end_time if entry else '' }}</td>
             <td>{{ ('%.2f'|format(entry.hours)).replace('.', ',') if entry else '0,00' }}</td>
             <td>{{ entry.remark if entry else day.remark }}</td>
-            <td>{% if entry and entry.compensation == 'Bezahlen' %}x{% if day.holiday %} <span class="forced-pay">Feiertag</span>{% endif %}{% endif %}</td>
-            <td>{% if entry and entry.compensation == 'Freizeit' %}x{% elif entry and day.holiday %}<span class="forced-pay muted">gesperrt</span>{% endif %}</td>
+            <td>{% if entry and entry.compensation == 'Bezahlen' %}x{% if day.force_pay_holiday %} <span class="forced-pay">Feiertag</span>{% endif %}{% endif %}</td>
+            <td>{% if entry and entry.compensation == 'Freizeit' %}x{% elif entry and day.force_pay_holiday %}<span class="forced-pay muted">gesperrt</span>{% endif %}</td>
             <td>{{ ('%.2f'|format(day.ist)).replace('.', ',') if n == row_count - 1 else '' }}</td>
             <td>{{ '0,00' if n == 0 else '' }}</td>
           </tr>

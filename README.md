@@ -86,6 +86,8 @@ Die App berechnet Thüringer Feiertage automatisch, inklusive beweglicher Feiert
 
 Feiertage werden in der Monatsansicht wie Wochenenden rot markiert und in der Summe **Sa/So/Feiertag** gezählt.
 
+Der Haken **Nur Bezahlen** steuert, ob Einsätze an diesem Feiertag automatisch auf **Bezahlen** gesetzt werden und **Freizeit** gesperrt ist. Standardmäßig ist der Haken bei den gesetzlichen Thüringer Feiertagen gesetzt, bei zusätzlich angelegten Feiertagen kann er frei gewählt werden.
+
 ## Bereitschaft eintragen
 
 Im Bereich **Bereitschaft** wählt der Benutzer:
@@ -108,7 +110,7 @@ Einsätze können nur an Tagen eingetragen werden, an denen eine Bereitschaft vo
 
 Die Einsatzzeit muss innerhalb der Bereitschaftszeit liegen. Beispiel: Bei Bereitschaft `06:00-18:00` ist ein Einsatz ab `19:00` nicht erlaubt.
 
-Bei Feiertagen ist nur **Bezahlen** möglich. Die App stellt das automatisch ein und zeigt in der Tabelle an, dass **Freizeit** gesperrt ist.
+Bei Feiertagen mit Haken **Nur Bezahlen** ist nur **Bezahlen** möglich. Die App stellt das automatisch ein und zeigt in der Tabelle an, dass **Freizeit** gesperrt ist. Bei Feiertagen ohne diesen Haken sind **Bezahlen** und **Freizeit** möglich.
 
 ## Monatsübersicht
 
