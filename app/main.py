@@ -1053,6 +1053,8 @@ def month_data(user_id, year, month):
         "days": days,
         "sum_soll": round(sum(d["soll"] for d in days), 2),
         "sum_work": round(sum(d["mehrarbeit"] for d in days), 2),
+        "sum_work_paid": round(sum(w["hours"] for w in month_work_entries if w["compensation"] == "Bezahlen"), 2),
+        "sum_work_leisure": round(sum(w["hours"] for w in month_work_entries if w["compensation"] == "Freizeit"), 2),
         "sum_weekday": round(sum(d["ist"] for d in days if d["date"].weekday() < 5 and not d["holiday"]), 2),
         "sum_weekend": round(sum(d["ist"] for d in days if d["date"].weekday() >= 5 or d["holiday"]), 2),
     }
@@ -1223,16 +1225,18 @@ def render_month_pdf(buffer, user, data, year, month):
     c.setFillColor(colors.red)
     draw_text(c, left, 30 * mm, "Bitte bis zum 4.Tag des Folgemonats abgeben!", 7, True)
     c.setFillColor(colors.black)
-    draw_text(c, left + 18 * mm, 22 * mm, "LA : 3121", 7)
-    draw_text(c, left + 50 * mm, 22 * mm, "Mo  -  Fr", 7)
-    draw_text(c, width - 76 * mm, 22 * mm, fmt_hours(data["sum_weekday"]), 7)
-    draw_text(c, left + 18 * mm, 17 * mm, "LA : 3122", 7)
-    draw_text(c, left + 50 * mm, 17 * mm, "Sa - So (Feiertag)", 7)
-    draw_text(c, width - 76 * mm, 17 * mm, fmt_hours(data["sum_weekend"]), 7)
-    draw_text(c, left + 50 * mm, 12 * mm, "Mehrarbeit", 7)
-    draw_text(c, width - 76 * mm, 12 * mm, fmt_hours(data["sum_work"]), 7)
-    draw_text(c, left + 18 * mm, 7 * mm, "LA : 3221", 7)
-    draw_text(c, left + 50 * mm, 7 * mm, "Erschwernisse", 7)
-    draw_text(c, width - 76 * mm, 7 * mm, "0,00", 7)
+    draw_text(c, left + 18 * mm, 24 * mm, "LA : 3121", 7)
+    draw_text(c, left + 50 * mm, 24 * mm, "Mo  -  Fr", 7)
+    draw_text(c, width - 76 * mm, 24 * mm, fmt_hours(data["sum_weekday"]), 7)
+    draw_text(c, left + 18 * mm, 20 * mm, "LA : 3122", 7)
+    draw_text(c, left + 50 * mm, 20 * mm, "Sa - So (Feiertag)", 7)
+    draw_text(c, width - 76 * mm, 20 * mm, fmt_hours(data["sum_weekend"]), 7)
+    draw_text(c, left + 50 * mm, 16 * mm, "Mehrarbeit bezahlt", 7)
+    draw_text(c, width - 76 * mm, 16 * mm, fmt_hours(data["sum_work_paid"]), 7)
+    draw_text(c, left + 50 * mm, 12 * mm, "Mehrarbeit Freizeit", 7)
+    draw_text(c, width - 76 * mm, 12 * mm, fmt_hours(data["sum_work_leisure"]), 7)
+    draw_text(c, left + 18 * mm, 8 * mm, "LA : 3221", 7)
+    draw_text(c, left + 50 * mm, 8 * mm, "Erschwernisse", 7)
+    draw_text(c, width - 76 * mm, 8 * mm, "0,00", 7)
     c.showPage()
     c.save()

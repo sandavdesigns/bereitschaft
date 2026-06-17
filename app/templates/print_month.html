@@ -237,7 +237,8 @@
         <table>
           <tr><td>LA : 3121</td><td>Mo&nbsp;&nbsp;-&nbsp;&nbsp;Fr</td><td>:</td><td class="value">{{ ('%.2f'|format(data.sum_weekday)).replace('.', ',') }}</td></tr>
           <tr><td>LA : 3122</td><td>Sa - So (Feiertag)</td><td>:</td><td class="value">{{ ('%.2f'|format(data.sum_weekend)).replace('.', ',') }}</td></tr>
-          <tr><td></td><td>Mehrarbeit</td><td>:</td><td class="value">{{ ('%.2f'|format(data.sum_work)).replace('.', ',') }}</td></tr>
+          <tr><td></td><td>Mehrarbeit bezahlt</td><td>:</td><td class="value">{{ ('%.2f'|format(data.sum_work_paid)).replace('.', ',') }}</td></tr>
+          <tr><td></td><td>Mehrarbeit Freizeit</td><td>:</td><td class="value">{{ ('%.2f'|format(data.sum_work_leisure)).replace('.', ',') }}</td></tr>
           <tr><td>LA : 3221</td><td>Erschwernisse</td><td>:</td><td class="value">0,00</td></tr>
         </table>
       </div>

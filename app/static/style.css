@@ -119,7 +119,7 @@ th { color: var(--muted); font-weight: 600; }
   font-weight: 600;
 }
 .forced-pay.muted { color: var(--muted); }
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
 .kpis div { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fafafa; }
 .kpis span { display: block; color: var(--muted); font-size: 13px; }
 .kpis strong { font-size: 22px; }
