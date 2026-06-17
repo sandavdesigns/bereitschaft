@@ -137,8 +137,15 @@ th { color: var(--muted); font-weight: 600; }
   background: #fafafa;
   color: var(--muted);
 }
+.help-intro { color: var(--muted); margin: -4px 0 18px; }
+.help-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.help-grid article { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #fafafa; }
+.help-grid h2 { font-size: 16px; margin-bottom: 10px; }
+.help-grid p { margin: 8px 0 0; }
+.help-grid ol { margin: 0; padding-left: 20px; }
+.help-grid li { margin: 4px 0; }
 @media (max-width: 780px) {
-  .forms, .grid-form, .user-form, .type-form, .holiday-form, .kpis { grid-template-columns: 1fr; }
+  .forms, .grid-form, .user-form, .type-form, .holiday-form, .kpis, .help-grid { grid-template-columns: 1fr; }
   .toolbar { align-items: stretch; flex-direction: column; }
   .toolbar-actions { flex-wrap: wrap; }
   .topbar { height: auto; gap: 12px; align-items: flex-start; flex-direction: column; padding: 14px 18px; }

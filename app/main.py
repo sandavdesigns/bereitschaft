@@ -70,6 +70,11 @@ def create_app():
             selected_type_id=selected_type_id,
         )
 
+    @app.get("/help")
+    @login_required
+    def help_page():
+        return render_template("help.html", user=current_user())
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if request.method == "POST":
