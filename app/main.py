@@ -1187,7 +1187,7 @@ def render_month_pdf(buffer, user, data, year, month):
             detail_rows.append((day, extra, False, len(entries)))
     detail_rows = detail_rows[:36]
     detail_row_h = min(5.2 * mm, max(3.4 * mm, (grid_y - 58 * mm) / max(len(detail_rows), 1)))
-    detail_font_size = 7.8 if detail_row_h >= 4.4 * mm else 7.0
+    detail_font_size = 8.8 if detail_row_h >= 4.4 * mm else 8.0
     y = grid_y - detail_row_h
     red = colors.Color(0.82, 0.42, 0.42, alpha=0.65)
     for day, entry, first_row, entry_count in detail_rows:
@@ -1218,7 +1218,7 @@ def render_month_pdf(buffer, user, data, year, month):
         ]
         for idx, val in enumerate(vals):
             c.rect(x, y, col_widths[idx] * mm, detail_row_h)
-            draw_fitted_text(c, x + col_widths[idx] * mm / 2, centered_text_baseline(y, detail_row_h, detail_font_size), val, col_widths[idx] * mm - 1 * mm, detail_font_size, False, "center", 6.2)
+            draw_fitted_text(c, x + col_widths[idx] * mm / 2, centered_text_baseline(y, detail_row_h, detail_font_size), val, col_widths[idx] * mm - 1 * mm, detail_font_size, False, "center", 7.0)
             x += col_widths[idx] * mm
         y -= detail_row_h
 
@@ -1235,7 +1235,7 @@ def render_month_pdf(buffer, user, data, year, month):
         detail_font_size,
         True,
         "center",
-        6.2,
+        7.0,
     )
 
     draw_text(c, left, 38 * mm, "Datum", 7)
