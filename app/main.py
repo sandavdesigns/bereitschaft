@@ -1132,7 +1132,7 @@ def render_month_pdf(buffer, user, data, year, month):
         ("Vorname:", user["first_name"] or ""),
         ("Name:", user["last_name"] or ""),
     ]
-    person_value_x = left + 32 * mm
+    person_value_x = left + 22 * mm
     person_value_width = max(12 * mm, table_x - person_value_x - 3 * mm)
     for row_idx, (label, value) in enumerate(person_rows):
         y = top - (18 + row_idx * 11) * mm
@@ -1221,6 +1221,22 @@ def render_month_pdf(buffer, user, data, year, month):
             draw_fitted_text(c, x + col_widths[idx] * mm / 2, centered_text_baseline(y, detail_row_h, detail_font_size), val, col_widths[idx] * mm - 1 * mm, detail_font_size, False, "center", 6.2)
             x += col_widths[idx] * mm
         y -= detail_row_h
+
+    std_total_x = grid_x + sum(col_widths[:5]) * mm
+    std_total_y = y
+    std_total_w = col_widths[5] * mm
+    c.rect(std_total_x, std_total_y, std_total_w, detail_row_h)
+    draw_fitted_text(
+        c,
+        std_total_x + std_total_w / 2,
+        centered_text_baseline(std_total_y, detail_row_h, detail_font_size),
+        fmt_hours(data["sum_work"]),
+        std_total_w - 1 * mm,
+        detail_font_size,
+        True,
+        "center",
+        6.2,
+    )
 
     draw_text(c, left, 38 * mm, "Datum", 7)
     draw_text(c, left + 34 * mm, 38 * mm, "Mitarbeiter", 7)
