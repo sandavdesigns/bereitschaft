@@ -972,12 +972,15 @@ def month_data(user_id, year, month):
     )
 
     readiness_display = []
+    readiness_records = []
     for item in readiness:
         item_start = max(parse_date(item["start_date"]), first)
         item_end = min(parse_date(item["end_date"]), last)
+        has_times = False
         for current in daterange(item_start, item_end):
             rule = rule_for_day(item, current, holiday_dates)
             if rule:
+                has_times = True
                 readiness_display.append(
                     {
                         "id": item["id"],
@@ -990,6 +993,16 @@ def month_data(user_id, year, month):
                         "friday_holiday_segment_label": friday_holiday_segment_label(item["friday_holiday_segment"]),
                     }
                 )
+        # Manage stored records even when their profile produces no daily times.
+        readiness_records.append({
+            "id": item["id"],
+            "kind": readiness_kind(item),
+            "start_date": item["start_date"],
+            "end_date": item["end_date"],
+            "has_type": item["type_name"] is not None,
+            "has_times": has_times,
+            "friday_holiday_segment": item["friday_holiday_segment"],
+        })
 
     days = []
     month_work_entries = []
@@ -1049,6 +1062,7 @@ def month_data(user_id, year, month):
     readiness_split = len(readiness_display) if len(readiness_display) <= 8 else (len(readiness_display) + 1) // 2
     return {
         "readiness": readiness_display,
+        "readiness_records": readiness_records,
         "readiness_columns": [column for column in (readiness_display[:readiness_split], readiness_display[readiness_split:]) if column],
         "has_readiness": len(readiness) > 0,
         "work_entries": month_work_entries,

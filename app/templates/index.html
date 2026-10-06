@@ -130,10 +130,12 @@
     <h2>Bereitschaften im Monat</h2>
     <table>
       <tbody>
-        {% for item in data.readiness %}
+        {% for item in data.readiness_records %}
           <tr>
-            <td>{{ item.kind }}</td><td>{{ item.start_date }} bis {{ item.end_date }}</td><td>{{ item.start_time }}-{{ item.end_time }}</td>
+            <td>{{ item.kind }}</td><td>{{ item.start_date }} bis {{ item.end_date }}</td>
+            <td>{% if not item.has_type %}Keine Bereitschaftsart zugeordnet{% elif not item.has_times %}Keine Zeiten im Monat hinterlegt{% else %}Zeiten laut Bereitschaftsart{% endif %}</td>
             <td>
+              {% if item.has_type %}
               <form method="post" action="{{ url_for('update_readiness_segment', item_id=item.id) }}" class="inline-type-form">
                 <input type="hidden" name="year" value="{{ year }}">
                 <input type="hidden" name="month" value="{{ month }}">
@@ -143,6 +145,7 @@
                 </select>
                 <button>Speichern</button>
               </form>
+              {% endif %}
             </td>
             <td>
               <form method="post" action="{{ url_for('delete_readiness', item_id=item.id) }}">
