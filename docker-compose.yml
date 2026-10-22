@@ -6,8 +6,8 @@ services:
     ports:
       - "${HOST_PORT:-8080}:${APP_PORT:-8080}"
     environment:
-      SECRET_KEY: "${SECRET_KEY:-change-me}"
-      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-admin123}"
+      SECRET_KEY: "${SECRET_KEY:?Set SECRET_KEY to a random value before deployment}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Set ADMIN_PASSWORD before deployment}"
       DATABASE_PATH: "/data/bereitschaft.sqlite"
       APP_PORT: "${APP_PORT:-8080}"
       GUNICORN_WORKERS: "${GUNICORN_WORKERS:-2}"
