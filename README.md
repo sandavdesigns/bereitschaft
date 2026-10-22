@@ -5,8 +5,12 @@ Kleine interne Web-App zur Pflege von Rufbereitschaft und Einsätzen mit Monats-
 ## Start mit Docker Compose
 
 ```bash
+export SECRET_KEY="$(openssl rand -hex 32)"
+export ADMIN_PASSWORD="choose-a-strong-admin-password"
 docker compose up -d --build
 ```
+
+`SECRET_KEY` und `ADMIN_PASSWORD` sind erforderlich; Docker Compose bricht ohne beide Werte ab.
 
 Die App läuft danach auf `http://localhost:8080`.
 
@@ -14,7 +18,7 @@ Die erste Anmeldung ist weiter unten beschrieben.
 
 ## Portainer
 
-Als Stack kann diese `docker-compose.yml` verwendet werden. Sinnvolle Variablen:
+Als Stack kann diese `docker-compose.yml` verwendet werden. Erforderliche Variablen:
 
 ```env
 SECRET_KEY=bitte-aendern
@@ -33,7 +37,7 @@ Portainer muss dadurch kein Image bauen.
 Beim ersten Start gibt es den Admin-Benutzer:
 
 - Benutzer: `admin`
-- Passwort: Wert aus `ADMIN_PASSWORD`, sonst `admin123`
+- Passwort: Wert aus `ADMIN_PASSWORD`
 
 Nach der Anmeldung sollte das Admin-Passwort geändert werden:
 
